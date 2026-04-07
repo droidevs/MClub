@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: MClub
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mclub_db
+    username: mclub_user
+    password: mclub_password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  docker:
+    compose:
+      enabled: true
+      file: compose.yaml
+server:
+  port: 8080
+app:
+  jwt:
+    secret: 9A4D3E5B1C7F8E2D6A0B9C4F5A6D7E8F1C3B2A4D5E6F7G8H9A0B1C2D3E4F5A6
+    expiration: 86400000
+
