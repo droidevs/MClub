@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout :: head}"></head>
-<body th:replace="~{layout :: body(content=~{::div[@class='container']})}" class="bg-light">
+<body th:replace="~{layout :: body(content=~{this :: content})}" class="bg-light">
 
-<div class="container mt-4">
+<div class="container mt-4" th:fragment="content">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-people-fill text-primary"></i> <span th:text="${club.name}"></span> Members</h2>
@@ -32,7 +32,7 @@
                             <td><span class="badge bg-secondary rounded-pill" th:text="${member.role}"></span></td>
                             <td>
                                 <span class="badge status-badge"
-                                      th:classappend="${member.status == 'PENDING'} ? 'status-pending' : (${member.status == 'APPROVED'} ? 'status-approved' : 'status-rejected')"
+                                      th:classappend="${member.status == 'PENDING'} ? ' status-pending' : (${member.status == 'APPROVED'} ? ' status-approved' : ' status-rejected')"
                                       th:text="${member.status}"></span>
                             </td>
                             <td class="text-muted" th:text="${#temporals.format(member.joinedAt, 'dd MMM yyyy HH:mm')}"></td>
@@ -65,16 +65,6 @@
     </div>
 </div>
 
-<style>
-    .status-badge {
-        font-size: 0.9em;
-        padding: 8px 12px;
-        border-radius: 12px;
-    }
-    .status-pending { background-color: #ffd700; color: #fff; }
-    .status-approved { background-color: #28a745; color: #fff; }
-    .status-rejected { background-color: #dc3545; color: #fff; }
-</style>
 
 </body>
 </html>

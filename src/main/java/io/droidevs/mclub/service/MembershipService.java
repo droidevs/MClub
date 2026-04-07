@@ -32,4 +32,10 @@ public class MembershipService {
     public List<MembershipDto> getMembers(UUID clubId) {
         return membershipRepository.findByClubId(clubId).stream().map(membershipMapper::toDto).collect(Collectors.toList());
     }
+    public List<MembershipDto> getApprovedMembers(UUID clubId) {
+        return membershipRepository.findByClubId(clubId).stream()
+                .filter(m -> "APPROVED".equalsIgnoreCase(m.getStatus()))
+                .map(membershipMapper::toDto)
+                .collect(Collectors.toList());
+    }
 }

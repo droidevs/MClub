@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Controller
 @RequestMapping("/club-admin")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('CLUB_ADMIN')")
+@PreAuthorize("hasRole('CLUB_ADMIN')")
 public class WebClubAdminController {
 
     private final ClubRepository clubRepository;

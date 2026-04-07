@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout :: head}"></head>
-<body th:replace="~{layout :: body(content=~{::div})}">
+<body th:replace="~{layout :: body(content=~{this :: content})}">
 
-<div class="container">
+<div class="container" th:fragment="content">
     <div class="row mt-4">
         <div class="col-12 text-center mb-4">
             <h1 class="display-5">Welcome back, <span th:text="${username}">User</span>!</h1>

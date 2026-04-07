@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout :: head}"></head>
-<body th:replace="~{layout :: body(content=~{::div[@class='container']})}">
+<body th:replace="~{layout :: body(content=~{this :: content})}">
 
-<div class="container">
+<div class="container" th:fragment="content">
     <div class="row align-items-center mt-4 mb-3">
         <div class="col">
             <h2 class="display-6 text-warning"><i class="bi bi-calendar-event"></i> Upcoming Events</h2>

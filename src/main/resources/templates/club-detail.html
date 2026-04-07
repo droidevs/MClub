@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{layout :: head}"></head>
+<body th:replace="~{layout :: body(content=~{this :: content})}">
+
+<div class="container" th:fragment="content">
+    <div class="row mt-4 mb-3">
+        <div class="col">
+            <h2 class="display-6"><i class="bi bi-people-fill text-primary"></i> <span th:text="${club.name}">Club Name</span></h2>
+            <p class="text-muted" th:text="${club.description}">Club description...</p>
+        </div>
+        <div class="col-auto d-flex align-items-start" sec:authorize="isAuthenticated() and !hasRole('PLATFORM_ADMIN')">
+            <form th:action="@{/memberships/club/{id}/join(id=${club.id})}" method="post">
+                <button type="submit" class="btn btn-success mt-2">Join Club</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Members</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center" th:each="member : ${members}">
+                            <div>
+                                <div class="fw-semibold" th:text="${member.userFullName}">Member Name</div>
+                                <div class="text-muted small" th:text="${member.role}">Role</div>
+                            </div>
+                        </li>
+                        <li class="list-group-item text-center text-muted" th:if="${#lists.isEmpty(members)}">
+                            No approved members yet.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a th:href="@{/clubs}" class="btn btn-outline-secondary btn-sm">Back to Clubs</a>
+    </div>
+</div>
+
+</body>
+</html>
+

@@ -29,7 +29,9 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/clubs", "/events", "/api/auth/**", "/login", "/register", "/css/**", "/js/**", "/error").permitAll()
+                .requestMatchers("/", "/clubs", "/events", "/api/auth/**", "/login", "/register", "/css/**", "/js/**", "/error", "/favicon.ico").permitAll()
+                .requestMatchers("/club-applications/**").hasRole("PLATFORM_ADMIN")
+                .requestMatchers("/club-admin/**").hasRole("CLUB_ADMIN")
                 .requestMatchers("/api/admin/**").hasRole("PLATFORM_ADMIN")
                 .anyRequest().authenticated()
             );

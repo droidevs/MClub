@@ -37,3 +37,34 @@ body {
     font-weight: 600;
 }
 
+/* Additional layout and utility tweaks */
+main.container {
+    padding-bottom: 40px;
+}
+
+.alert {
+    border-radius: 0.75rem;
+}
+
+.table thead th {
+    border-bottom: 2px solid rgba(0,0,0,.08);
+}
+
+/* Membership status badges */
+.status-badge {
+    font-size: 0.9em;
+    padding: 8px 12px;
+    border-radius: 12px;
+}
+.status-pending {
+    background-color: #ffd700;
+    color: #fff;
+}
+.status-approved {
+    background-color: #28a745;
+    color: #fff;
+}
+.status-rejected {
+    background-color: #dc3545;
+    color: #fff;
+}

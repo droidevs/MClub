@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{layout :: head}"></head>
-<body th:replace="~{layout :: body(content=~{::div})}">
+<body th:replace="~{layout :: body(content=~{this :: content})}">
 
-<div class="container">
+<div class="container" th:fragment="content">
     <div class="mt-4 mb-3">
         <h2 class="display-6"><i class="bi bi-file-earmark-text text-primary"></i> Pending Club Applications</h2>
         <p class="text-muted">Review users' requests to establish new clubs on the platform.</p>

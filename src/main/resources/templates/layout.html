@@ -28,6 +28,9 @@
                 <li class="nav-item">
                     <a class="nav-link" th:href="@{/events}">Events</a>
                 </li>
+                <li class="nav-item" sec:authorize="hasRole('CLUB_ADMIN')">
+                    <a class="nav-link text-info" th:href="@{/club-admin/clubs}">My Managed Clubs</a>
+                </li>
                 <li class="nav-item" sec:authorize="hasRole('PLATFORM_ADMIN')">
                     <a class="nav-link text-warning" th:href="@{/club-applications}">Applications</a>
                 </li>
@@ -46,8 +49,9 @@
     </div>
 </nav>
 
-<main class="container">
-    <div th:insert="${content}"></div>
+<main class="container" style="padding-top: 70px;">
+    <!-- Render the passed content fragment safely -->
+    <div th:replace="${content}"></div>
 </main>
 
 <!-- Bootstrap JS -->
