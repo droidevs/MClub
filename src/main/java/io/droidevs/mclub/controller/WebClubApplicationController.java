@@ -30,6 +30,12 @@ public class WebClubApplicationController {
         return "redirect:/clubs";
     }
 
+    @GetMapping("/apply")
+    public String showApplicationForm(Model model) {
+        model.addAttribute("clubApplicationDto", new ClubApplicationDto());
+        return "apply-club";
+    }
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public String viewApplications(Model model) {
@@ -61,4 +67,3 @@ public class WebClubApplicationController {
         return "redirect:/club-applications";
     }
 }
-

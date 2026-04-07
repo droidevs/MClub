@@ -13,7 +13,7 @@
             <h2 class="display-6"><i class="bi bi-people-fill text-primary"></i> Clubs Collection</h2>
         </div>
         <div class="col-auto">
-            <button class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#createClubModal">Apply to Start a Club</button>
+            <a class="btn btn-primary shadow-sm" th:href="@{/club-applications/apply}">Apply to Start a Club</a>
         </div>
     </div>
 
@@ -64,37 +64,6 @@
             </li>
         </ul>
     </nav>
-
-    <!-- Club Application Modal -->
-    <div class="modal fade" id="createClubModal" tabindex="-1" aria-labelledby="createClubModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <form th:action="@{/club-applications/submit}" method="post">
-          <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white border-0">
-              <h5 class="modal-title" id="createClubModalLabel"><i class="bi bi-pencil-square me-2"></i>Submit Club Application</h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-4">
-              <div class="alert alert-info py-2" role="alert">
-                <small><i class="bi bi-info-circle-fill me-1"></i>Applications will be reviewed by the school administration.</small>
-              </div>
-              <div class="mb-3">
-                <label for="name" class="form-label fw-bold">Proposed Club Name</label>
-                <input type="text" class="form-control bg-light" id="name" name="name" placeholder="e.g. Debate Club" required>
-              </div>
-              <div class="mb-3">
-                <label for="description" class="form-label fw-bold">Club Description</label>
-                <textarea class="form-control bg-light" id="description" name="description" rows="4" placeholder="Describe the club's activities and goals..." required></textarea>
-              </div>
-            </div>
-            <div class="modal-footer border-0 pt-0">
-              <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary px-4">Submit Application</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
 
 </div>
 </div>
