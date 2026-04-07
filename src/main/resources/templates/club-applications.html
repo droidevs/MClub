@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Pending Club Applications</title>
+</head>
+<body>
+
+<div th:replace="~{layout.html :: body(content=~{::div.container})}">
+<div class="container">
+    <div class="mt-4 mb-3">
+        <h2 class="display-6"><i class="bi bi-file-earmark-text text-primary"></i> Pending Club Applications</h2>
+        <p class="text-muted">Review users' requests to establish new clubs on the platform.</p>
+    </div>
+
+    <!-- Alert Messages -->
+    <div th:if="${message}" class="alert alert-success mt-2" th:text="${message}"></div>
+    <div th:if="${error}" class="alert alert-danger mt-2" th:text="${error}"></div>
+
+    <div class="card shadow-sm border-0 mt-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Club Name</th>
+                        <th>Description</th>
+                        <th>Applicant</th>
+                        <th>Date Submitted</th>
+                        <th class="text-center pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="app : ${applications}">
+                        <td class="ps-4 fw-bold" th:text="${app.name}">Club Name</td>
+                        <td th:text="${app.description}">Description</td>
+                        <td>
+                            <span th:text="${app.submittedByName}">Name</span><br>
+                            <small class="text-muted" th:text="${app.submittedByEmail}">user@school.edu</small>
+                        </td>
+                        <td th:text="${#temporals.format(app.createdAt, 'dd MMM yyyy')}">Date</td>
+                        <td class="pe-4">
+                            <div class="d-flex justify-content-center gap-2">
+                                <form th:action="@{/club-applications/{id}/approve(id=${app.id})}" method="post">
+                                    <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm">Approve</button>
+                                </form>
+                                <form th:action="@{/club-applications/{id}/reject(id=${app.id})}" method="post">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 shadow-sm">Reject</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(applications)}">
+                        <td colspan="5" class="text-center p-5 text-muted">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No pending club applications at this time.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+</div>
+
+</body>
+</html>
+

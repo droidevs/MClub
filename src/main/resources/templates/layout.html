@@ -30,6 +30,9 @@
                 <li class="nav-item">
                     <a class="nav-link" th:href="@{/events}">Events</a>
                 </li>
+                <li class="nav-item" th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
+                    <a class="nav-link text-warning" th:href="@{/club-applications}">Applications</a>
+                </li>
             </ul>
             <div class="d-flex" th:if="${#authorization.expression('isAuthenticated()')}">
                 <span class="navbar-text me-3" th:text="${#authentication.name}">User</span>
