@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="layout.html::head"></head>
+<head th:replace="~{layout.html::head}"></head>
 <body>
-<div th:replace="layout.html :: body(content=~{::div.container})">
+<div th:replace="~{layout.html :: body(content=~{::div.container})}">
+<div class="container">
     <div class="row justify-content-center mt-5">
         <div class="col-md-6">
             <div class="card shadow-lg border-0 rounded-4">
@@ -61,6 +62,6 @@
         </div>
     </div>
 </div>
+</div>
 </body>
 </html>
-

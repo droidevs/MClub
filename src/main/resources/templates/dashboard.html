@@ -5,7 +5,8 @@
 </head>
 <body>
 
-<div th:replace="layout.html :: body(content=~{::div.container})">
+<div th:replace="~{layout.html :: body(content=~{::div.container})}">
+<div class="container">
     <div class="row mt-4">
         <div class="col-12 text-center mb-4">
             <h1 class="display-5">Welcome back, <span th:text="${username}">User</span>!</h1>
@@ -69,7 +70,7 @@
         </div>
     </div>
 </div>
+</div>
 
 </body>
 </html>
-
