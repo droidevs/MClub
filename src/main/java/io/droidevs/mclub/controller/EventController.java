@@ -4,7 +4,6 @@ import io.droidevs.mclub.dto.*;
 import io.droidevs.mclub.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +18,6 @@ public class EventController {
     private final RegistrationService registrationService;
 
     @PostMapping
-    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<EventDto> createEvent(@RequestBody EventDto dto, Authentication auth) {
         return ResponseEntity.ok(eventService.createEvent(dto, auth.getName()));
     }
@@ -35,7 +33,6 @@ public class EventController {
     }
 
     @GetMapping("/{eventId}/participants")
-    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     public ResponseEntity<List<RegistrationDto>> getParticipants(@PathVariable UUID eventId) {
         return ResponseEntity.ok(registrationService.getRegistrations(eventId));
     }

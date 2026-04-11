@@ -30,7 +30,7 @@ class EventRatingServiceTest {
     @Autowired EventRatingService eventRatingService;
 
     @Test
-    void studentCanRateOnlyIfRegistered() {
+    void studentCanRateOnlyIfRegistered_andAfterEventEnds() {
         User student = userRepository.save(User.builder()
                 .email("s@test.com")
                 .password("x")
@@ -42,18 +42,23 @@ class EventRatingServiceTest {
                 .title("E")
                 .description("D")
                 .location("L")
-                .startDate(LocalDateTime.now())
+                .startDate(LocalDateTime.now().minusHours(2))
                 .endDate(LocalDateTime.now().plusHours(1))
                 .createdBy(student)
                 .build());
+
+        eventRegistrationRepository.save(EventRegistration.builder().event(event).user(student).build());
 
         EventRatingRequest req = new EventRatingRequest();
         req.setRating(5);
         req.setComment("great");
 
+        // too early
         assertThrows(RuntimeException.class, () -> eventRatingService.rateEvent(event.getId(), req, student.getEmail()));
 
-        eventRegistrationRepository.save(EventRegistration.builder().event(event).user(student).build());
+        // move end date to past -> now allowed
+        event.setEndDate(LocalDateTime.now().minusMinutes(1));
+        eventRepository.save(event);
 
         var dto = eventRatingService.rateEvent(event.getId(), req, student.getEmail());
         assertEquals(5, dto.getRating());
@@ -82,8 +87,8 @@ class EventRatingServiceTest {
                 .title("E")
                 .description("D")
                 .location("L")
-                .startDate(LocalDateTime.now())
-                .endDate(LocalDateTime.now().plusHours(1))
+                .startDate(LocalDateTime.now().minusHours(2))
+                .endDate(LocalDateTime.now().minusHours(1))
                 .createdBy(admin)
                 .build());
 

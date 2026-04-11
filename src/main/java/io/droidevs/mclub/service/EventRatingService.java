@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,6 +39,11 @@ public class EventRatingService {
 
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+
+        // Rule B: rating only allowed after the event ends
+        if (event.getEndDate() != null && event.getEndDate().isAfter(LocalDateTime.now())) {
+            throw new RuntimeException("You can rate this event only after it ends");
+        }
 
         // eligibility: must be registered
         if (eventRegistrationRepository.findByUserIdAndEventId(student.getId(), eventId).isEmpty()) {
@@ -82,4 +88,3 @@ public class EventRatingService {
         return dto;
     }
 }
-

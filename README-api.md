@@ -130,3 +130,39 @@ curl -X GET http://localhost:8080/api/events/club/<CLUB_UUID> \
 -H "Authorization: Bearer <YOUR_TOKEN>"
 ```
 
+## Authorization model (global vs club-scoped)
+
+### Global roles (platform-wide)
+- `PLATFORM_ADMIN`
+- `STUDENT`
+
+A user always has exactly one global role (stored on `User.role`).
+
+### Club roles (scoped per club)
+A user’s permissions inside a club come from their **membership** record in that club.
+
+Membership fields:
+- `Membership.role`: `ADMIN | STAFF | MEMBER`
+- `Membership.status`: `PENDING | APPROVED | REJECTED`
+
+So the same student can be:
+- `ADMIN` in Club A, and only `MEMBER` in Club B.
+
+## Event ratings (students)
+
+Students can rate events using:
+
+- `POST /api/events/{eventId}/ratings`
+  - body: `{ "rating": 1..5, "comment": "optional" }`
+  - rule: only `STUDENT`
+  - rule: must be registered for the event
+  - rule (B): can rate **only after the event ends** (`event.endDate <= now`)
+  - if a rating already exists, it is updated
+
+- `GET /api/events/{eventId}/ratings/me` (student)
+
+- `GET /api/events/{eventId}/ratings/summary` (public)
+  - returns avg + count
+
+- `GET /api/events/{eventId}/ratings` (platform admin for now)
+  - returns full list
