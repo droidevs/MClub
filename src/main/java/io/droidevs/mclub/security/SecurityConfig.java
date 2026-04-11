@@ -31,7 +31,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/clubs", "/events", "/api/auth/**", "/login", "/register", "/css/**", "/js/**", "/error", "/favicon.ico").permitAll()
                 .requestMatchers("/club-applications/**").hasRole("PLATFORM_ADMIN")
-                .requestMatchers("/club-admin/**").hasRole("CLUB_ADMIN")
+                // club-admin pages are restricted by membership (club-scoped). Require login here; deeper checks happen in controller.
+                .requestMatchers("/club-admin/**").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("PLATFORM_ADMIN")
                 .anyRequest().authenticated()
             );

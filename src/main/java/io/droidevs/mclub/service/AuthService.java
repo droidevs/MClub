@@ -27,10 +27,8 @@ public class AuthService {
         Role r;
         if (req.getRole() != null && req.getRole().equalsIgnoreCase("PLATFORM_ADMIN")) {
             r = Role.PLATFORM_ADMIN;
-        } else if (req.getRole() != null && req.getRole().equalsIgnoreCase("CLUB_ADMIN")) {
-            r = Role.CLUB_ADMIN;
         } else {
-            r = Role.MEMBER;
+            r = Role.STUDENT;
         }
         User user = User.builder().email(req.getEmail()).password(passwordEncoder.encode(req.getPassword()))
                 .fullName(req.getFullName()).role(r).build();

@@ -4,7 +4,6 @@ import io.droidevs.mclub.domain.*;
 import io.droidevs.mclub.dto.ClubApplicationDto;
 import io.droidevs.mclub.mapper.ClubApplicationMapper;
 import io.droidevs.mclub.repository.*;
-import io.droidevs.mclub.security.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,12 +56,6 @@ public class ClubApplicationService {
 
         User submitter = app.getSubmittedBy();
 
-        // Update user role if they are just a MEMBER
-        if (submitter.getRole() == Role.MEMBER) {
-            submitter.setRole(Role.CLUB_ADMIN);
-            userRepository.save(submitter);
-        }
-
         // Create the club based on the application
         Club club = Club.builder()
                 .name(app.getName())
@@ -71,12 +64,12 @@ public class ClubApplicationService {
                 .build();
         club = clubRepository.save(club);
 
-        // Assign the user who submitted the application as the Club Admin
+        // Assign the user who submitted the application as the Club ADMIN (club-scoped)
         Membership membership = Membership.builder()
                 .user(submitter)
                 .club(club)
-                .role(Role.CLUB_ADMIN)
-                .status("APPROVED")
+                .role(ClubRole.ADMIN)
+                .status(MembershipStatus.APPROVED)
                 .build();
         membershipRepository.save(membership);
     }
@@ -90,4 +83,3 @@ public class ClubApplicationService {
         applicationRepository.save(app);
     }
 }
-

@@ -1,10 +1,9 @@
 package io.droidevs.mclub.bootstrap;
 
-import io.droidevs.mclub.domain.Club;
-import io.droidevs.mclub.domain.Event;
-import io.droidevs.mclub.domain.User;
+import io.droidevs.mclub.domain.*;
 import io.droidevs.mclub.repository.ClubRepository;
 import io.droidevs.mclub.repository.EventRepository;
+import io.droidevs.mclub.repository.MembershipRepository;
 import io.droidevs.mclub.repository.UserRepository;
 import io.droidevs.mclub.security.Role;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +22,7 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final ClubRepository clubRepository;
     private final EventRepository eventRepository;
+    private final MembershipRepository membershipRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -34,7 +34,7 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Seeding database with test users...");
 
-        // Create Admin User
+        // Create Platform Admin User
         User admin = User.builder()
                 .fullName("System Administrator")
                 .email("admin@mclub.com")
@@ -43,26 +43,26 @@ public class DataSeeder implements CommandLineRunner {
                 .build();
         userRepository.save(admin);
 
-        // Create Member User
+        // Create Student User
         User member = User.builder()
-                .fullName("John Member")
+                .fullName("John Student")
                 .email("member@mclub.com")
                 .password(passwordEncoder.encode("member123"))
-                .role(Role.MEMBER)
+                .role(Role.STUDENT)
                 .build();
         userRepository.save(member);
 
-        // Create Club Admin User
+        // Create Manager User (still a STUDENT globally; gets club ADMIN via membership)
         User clubAdmin = User.builder()
                 .fullName("Club Manager")
                 .email("manager@mclub.com")
                 .password(passwordEncoder.encode("manager123"))
-                .role(Role.CLUB_ADMIN)
+                .role(Role.STUDENT)
                 .build();
         userRepository.save(clubAdmin);
 
         log.info("Seeding clubs...");
-        // Create Clubs
+
         Club photographyClub = Club.builder()
                 .name("Photography Club")
                 .description("A community for photography enthusiasts to share tips and organize photowalks.")
@@ -77,8 +77,16 @@ public class DataSeeder implements CommandLineRunner {
                 .build();
         clubRepository.save(codingClub);
 
+        // Assign manager as ADMIN of Coding Club (club-scoped)
+        membershipRepository.save(Membership.builder()
+                .user(clubAdmin)
+                .club(codingClub)
+                .role(ClubRole.ADMIN)
+                .status(MembershipStatus.APPROVED)
+                .build());
+
         log.info("Seeding events...");
-        // Create Events
+
         Event photoWalk = Event.builder()
                 .title("Downtown Photowalk")
                 .description("Join us for a morning photowalk exploring the historic downtown architecture.")
@@ -103,8 +111,8 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Database seeding complete!");
         log.info("Test Accounts:");
-        log.info("Admin: admin@mclub.com / admin123");
-        log.info("Manager: manager@mclub.com / manager123");
-        log.info("Member: member@mclub.com / member123");
+        log.info("Platform Admin: admin@mclub.com / admin123");
+        log.info("Manager (student + club ADMIN): manager@mclub.com / manager123");
+        log.info("Student: member@mclub.com / member123");
     }
 }

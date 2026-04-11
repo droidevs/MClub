@@ -1,14 +1,13 @@
 package io.droidevs.mclub.controller;
 
 import io.droidevs.mclub.domain.Club;
+import io.droidevs.mclub.domain.ClubRole;
 import io.droidevs.mclub.domain.Membership;
 import io.droidevs.mclub.domain.User;
 import io.droidevs.mclub.repository.ClubRepository;
 import io.droidevs.mclub.repository.MembershipRepository;
 import io.droidevs.mclub.repository.UserRepository;
-import io.droidevs.mclub.security.Role;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,20 +21,27 @@ import java.util.stream.Collectors;
 @Controller
 @RequestMapping("/club-admin")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('CLUB_ADMIN')")
 public class WebClubAdminController {
 
     private final ClubRepository clubRepository;
     private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
 
+    private boolean canManageClub(UUID clubId, UUID userId) {
+        return membershipRepository.findByClubId(clubId).stream()
+                .anyMatch(m -> m.getUser().getId().equals(userId)
+                        && (m.getRole() == ClubRole.ADMIN || m.getRole() == ClubRole.STAFF));
+    }
+
     @GetMapping("/clubs")
     public String myManagedClubs(Model model, Authentication auth) {
         User user = userRepository.findByEmail(auth.getName()).orElseThrow();
-        // find clubs where this user is CLUB_ADMIN
+        // find clubs where this user is ADMIN/STAFF
         List<Membership> memberships = membershipRepository.findAll().stream()
-                .filter(m -> m.getUser().getId().equals(user.getId()) && m.getRole() == Role.CLUB_ADMIN)
+                .filter(m -> m.getUser().getId().equals(user.getId())
+                        && (m.getRole() == ClubRole.ADMIN || m.getRole() == ClubRole.STAFF))
                 .collect(Collectors.toList());
+
         List<Club> managedClubs = memberships.stream().map(Membership::getClub).collect(Collectors.toList());
         model.addAttribute("clubs", managedClubs);
         return "my-managed-clubs";
@@ -46,12 +52,9 @@ public class WebClubAdminController {
         // Find club
         Club club = clubRepository.findById(clubId).orElseThrow();
 
-        // Ensure current user is admin of this club
+        // Ensure current user can manage this club
         User user = userRepository.findByEmail(auth.getName()).orElseThrow();
-        boolean isAdmin = membershipRepository.findByClubId(clubId).stream()
-                .anyMatch(m -> m.getUser().getId().equals(user.getId()) && m.getRole() == Role.CLUB_ADMIN);
-
-        if (!isAdmin) {
+        if (!canManageClub(clubId, user.getId())) {
             return "redirect:/dashboard";
         }
 
@@ -72,15 +75,12 @@ public class WebClubAdminController {
         UUID clubId = membership.getClub().getId();
 
         User user = userRepository.findByEmail(auth.getName()).orElseThrow();
-        boolean isAdmin = membershipRepository.findByClubId(clubId).stream()
-                .anyMatch(m -> m.getUser().getId().equals(user.getId()) && m.getRole() == Role.CLUB_ADMIN);
-
-        if (!isAdmin) {
+        if (!canManageClub(clubId, user.getId())) {
             redirectAttributes.addFlashAttribute("error", "You do not have permission to manage this club.");
             return "redirect:/dashboard";
         }
 
-        membership.setStatus(status);
+        membership.setStatus(io.droidevs.mclub.domain.MembershipStatus.valueOf(status.toUpperCase()));
         membershipRepository.save(membership);
         redirectAttributes.addFlashAttribute("message", "Member status updated to " + status + ".");
         return "redirect:/club-admin/clubs/" + clubId + "/members";
@@ -94,10 +94,7 @@ public class WebClubAdminController {
         UUID clubId = membership.getClub().getId();
 
         User user = userRepository.findByEmail(auth.getName()).orElseThrow();
-        boolean isAdmin = membershipRepository.findByClubId(clubId).stream()
-                .anyMatch(m -> m.getUser().getId().equals(user.getId()) && m.getRole() == Role.CLUB_ADMIN);
-
-        if (!isAdmin) {
+        if (!canManageClub(clubId, user.getId())) {
             redirectAttributes.addFlashAttribute("error", "You do not have permission to manage this club.");
             return "redirect:/dashboard";
         }
@@ -107,4 +104,3 @@ public class WebClubAdminController {
         return "redirect:/club-admin/clubs/" + clubId + "/members";
     }
 }
-
