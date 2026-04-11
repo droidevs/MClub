@@ -30,7 +30,7 @@ public class WebClubApplicationController {
         return "redirect:/clubs";
     }
 
-    @GetMapping("/apply")
+    @GetMapping({"/apply", "/apply-club"})
     public String showApplicationForm(Model model) {
         model.addAttribute("clubApplicationDto", new ClubApplicationDto());
         return "apply-club";

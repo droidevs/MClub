@@ -190,19 +190,28 @@
         document.execCommand('copy');
     }
 
-    function renderQr(targetId, size) {
+    function getTokenValue() {
         const tokenEl = document.getElementById('qrToken');
-        const target = document.getElementById(targetId);
-        if (!tokenEl || !target) return;
-        const token = tokenEl.value;
-        if (!token) return;
+        if (!tokenEl) return null;
+        const v = (tokenEl.value || '').trim();
+        // Thymeleaf may render literal "null" if model attr is null; treat it as no token
+        if (!v || v.toLowerCase() === 'null') return null;
+        return v;
+    }
 
-        // qrcode.min.js provides a global QRCode constructor
-        if (typeof QRCode !== 'undefined') {
-            target.innerHTML = '';
-            // eslint-disable-next-line no-undef
-            new QRCode(target, { text: token, width: size, height: size, correctLevel: QRCode.CorrectLevel.H });
+    function renderQr(targetId, size) {
+        const target = document.getElementById(targetId);
+        const token = getTokenValue();
+        if (!target || !token) return;
+
+        if (typeof QRCode === 'undefined') {
+            target.innerHTML = '<div class="text-danger small">QR library not loaded.</div>';
+            return;
         }
+
+        target.innerHTML = '';
+        // eslint-disable-next-line no-undef
+        new QRCode(target, { text: token, width: size, height: size, correctLevel: QRCode.CorrectLevel.H });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -210,15 +219,29 @@
     });
 
     function openQrFullscreen() {
-        renderQr('qrCanvasLarge', 420);
-        const modal = new bootstrap.Modal(document.getElementById('qrFullscreenModal'));
+        const modalEl = document.getElementById('qrFullscreenModal');
+        if (!modalEl) return;
+
+        // Prefer the global bootstrap (as in your events.html), but also support modules/bundlers.
+        const bs = window.bootstrap;
+        if (!bs || !bs.Modal) {
+            alert('Bootstrap modal JS not loaded.');
+            return;
+        }
+
+        const modal = bs.Modal.getOrCreateInstance(modalEl);
+
+        // Render after the modal is visible, so qrcodejs can measure correctly.
+        modalEl.addEventListener('shown.bs.modal', () => {
+            renderQr('qrCanvasLarge', 420);
+        }, { once: true });
+
         modal.show();
     }
 
     function printQr() {
-        const tokenEl = document.getElementById('qrToken');
-        if (!tokenEl || !tokenEl.value) return;
-        const token = tokenEl.value;
+        const token = getTokenValue();
+        if (!token) return;
 
         const eventTitle = document.querySelector('#qrFullscreenModal .h4')?.textContent || document.title;
         const clubName = document.querySelector('#qrFullscreenModal .text-muted')?.textContent || '';
@@ -250,15 +273,21 @@
     <div class="qr" id="printQr"></div>
     <div class="hint">Scan to check in</div>
   </div>
-  <script src="/js/qrcode.min.js"></script>
-  <script>
-    if (typeof QRCode !== 'undefined') {
-      new QRCode(document.getElementById('printQr'), { text: ${JSON.stringify(token)}, width: 420, height: 420, correctLevel: QRCode.CorrectLevel.H });
-      setTimeout(() => window.print(), 250);
-    } else {
-      document.getElementById('printQr').textContent = 'QR library not loaded.';
-    }
-  </script>
+
+  <script type="text/javascript">
+    (function(){
+      var token = ${JSON.stringify(token)};
+      function draw(){
+        if (!window.QRCode) return;
+        new window.QRCode(document.getElementById('printQr'), { text: token, width: 420, height: 420, correctLevel: window.QRCode.CorrectLevel.H });
+        setTimeout(function(){ window.print(); }, 250);
+      }
+      var s = document.createElement('script');
+      s.src = '/js/qrcode.min.js';
+      s.onload = draw;
+      document.head.appendChild(s);
+    })();
+  <\\/script>
 </body>
 </html>`);
         w.document.close();

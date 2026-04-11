@@ -52,6 +52,15 @@ public class DataSeeder implements CommandLineRunner {
                 .build();
         userRepository.save(member);
 
+        // Create Second Student User
+        User member2 = User.builder()
+                .fullName("Sara Student")
+                .email("student2@mclub.com")
+                .password(passwordEncoder.encode("student123"))
+                .role(Role.STUDENT)
+                .build();
+        userRepository.save(member2);
+
         // Create Manager User (still a STUDENT globally; gets club ADMIN via membership)
         User clubAdmin = User.builder()
                 .fullName("Club Manager")
@@ -114,5 +123,6 @@ public class DataSeeder implements CommandLineRunner {
         log.info("Platform Admin: admin@mclub.com / admin123");
         log.info("Manager (student + club ADMIN): manager@mclub.com / manager123");
         log.info("Student: member@mclub.com / member123");
+        log.info("Student 2: student2@mclub.com / student123");
     }
 }

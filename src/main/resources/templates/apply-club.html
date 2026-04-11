@@ -18,15 +18,15 @@
 
                     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-                    <form th:action="@{/club-applications/submit}" method="post">
+                    <form th:action="@{/club-applications/submit}" method="post" th:object="${clubApplicationDto}">
                         <div class="mb-4">
                             <label for="name" class="form-label fw-bold">Proposed Club Name</label>
-                            <input type="text" class="form-control bg-light py-2" id="name" name="name"
+                            <input type="text" class="form-control bg-light py-2" id="name" name="name" th:field="*{name}"
                                    placeholder="e.g. Debate Club" required>
                         </div>
                         <div class="mb-4">
                             <label for="description" class="form-label fw-bold">Club Description</label>
-                            <textarea class="form-control bg-light" id="description" name="description" rows="5"
+                            <textarea class="form-control bg-light" id="description" name="description" th:field="*{description}" rows="5"
                                       placeholder="Describe the club's activities, goals, and why it should be created..."
                                       required></textarea>
                         </div>
