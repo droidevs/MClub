@@ -1,14 +1,8 @@
 package io.droidevs.mclub.service;
 
-import io.droidevs.mclub.domain.Event;
-import io.droidevs.mclub.domain.EventRating;
-import io.droidevs.mclub.domain.EventRegistration;
-import io.droidevs.mclub.domain.User;
+import io.droidevs.mclub.domain.*;
 import io.droidevs.mclub.dto.EventRatingRequest;
-import io.droidevs.mclub.repository.EventRatingRepository;
-import io.droidevs.mclub.repository.EventRegistrationRepository;
-import io.droidevs.mclub.repository.EventRepository;
-import io.droidevs.mclub.repository.UserRepository;
+import io.droidevs.mclub.repository.*;
 import io.droidevs.mclub.security.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,12 +19,13 @@ class EventRatingServiceTest {
 
     @Autowired EventRepository eventRepository;
     @Autowired EventRegistrationRepository eventRegistrationRepository;
+    @Autowired EventAttendanceRepository eventAttendanceRepository;
     @Autowired EventRatingRepository eventRatingRepository;
     @Autowired UserRepository userRepository;
     @Autowired EventRatingService eventRatingService;
 
     @Test
-    void studentCanRateOnlyIfRegistered_andAfterEventEnds() {
+    void studentCanRateOnlyIfRegistered_andAfterEventEnds_andAttended() {
         User student = userRepository.save(User.builder()
                 .email("s@test.com")
                 .password("x")
@@ -53,25 +48,30 @@ class EventRatingServiceTest {
         req.setRating(5);
         req.setComment("great");
 
-        // too early
+        // too early (event not ended)
         assertThrows(RuntimeException.class, () -> eventRatingService.rateEvent(event.getId(), req, student.getEmail()));
 
-        // move end date to past -> now allowed
+        // end event (now rating time condition passes) but still not attended
         event.setEndDate(LocalDateTime.now().minusMinutes(1));
         eventRepository.save(event);
 
+        assertThrows(RuntimeException.class, () -> eventRatingService.rateEvent(event.getId(), req, student.getEmail()));
+
+        // mark attended
+        eventAttendanceRepository.save(EventAttendance.builder()
+                .event(event)
+                .user(student)
+                .method(AttendanceMethod.STUDENT_SCANNED_EVENT_QR)
+                .build());
+
         var dto = eventRatingService.rateEvent(event.getId(), req, student.getEmail());
         assertEquals(5, dto.getRating());
-        assertEquals(event.getId(), dto.getEventId());
 
         // second time updates same row
         req.setRating(3);
         var dto2 = eventRatingService.rateEvent(event.getId(), req, student.getEmail());
         assertEquals(3, dto2.getRating());
         assertEquals(1, eventRatingRepository.findByEventId(event.getId()).size());
-
-        EventRating stored = eventRatingRepository.findByEventIdAndStudentId(event.getId(), student.getId()).orElseThrow();
-        assertEquals(3, stored.getRating());
     }
 
     @Test

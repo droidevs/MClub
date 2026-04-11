@@ -148,6 +148,35 @@ Membership fields:
 So the same student can be:
 - `ADMIN` in Club A, and only `MEMBER` in Club B.
 
+## Event attendance (QR check-in)
+
+### Organizer (event creator / club ADMIN/STAFF)
+The organizer opens a check-in window for an event and receives a **token** to embed in a QR code.
+Only the token hash is stored server-side, so rotating the token invalidates old QRs.
+
+- `POST /api/events/{eventId}/attendance/window`
+  - body: `{ "opensBeforeStartMinutes": 15, "closesAfterStartMinutes": 60 }`
+  - returns: `{ "eventId": "...", "token": "<RAW_TOKEN>" }`
+
+- `POST /api/events/{eventId}/attendance/window/close`
+
+- `GET /api/events/{eventId}/attendance`
+  - list who checked in
+
+### Student
+- `POST /api/attendance/check-in`
+  - body: `{ "token": "<RAW_TOKEN_FROM_QR>" }`
+  - rules:
+    - must be `STUDENT`
+    - must be registered for the event
+    - must be within the configured time window
+
+### Organizer manual check-in (admin scans student in-person)
+- `POST /api/events/{eventId}/attendance/check-in/{studentId}`
+  - rules:
+    - organizer must be platform admin or club ADMIN/STAFF
+    - must be within the configured time window
+
 ## Event ratings (students)
 
 Students can rate events using:
@@ -156,6 +185,7 @@ Students can rate events using:
   - body: `{ "rating": 1..5, "comment": "optional" }`
   - rule: only `STUDENT`
   - rule: must be registered for the event
+  - rule: must have attended (checked-in)
   - rule (B): can rate **only after the event ends** (`event.endDate <= now`)
   - if a rating already exists, it is updated
 

@@ -3,6 +3,7 @@ package io.droidevs.mclub.service;
 import io.droidevs.mclub.domain.ClubRole;
 import io.droidevs.mclub.domain.MembershipStatus;
 import io.droidevs.mclub.domain.User;
+import io.droidevs.mclub.exception.ForbiddenException;
 import io.droidevs.mclub.repository.MembershipRepository;
 import io.droidevs.mclub.repository.UserRepository;
 import io.droidevs.mclub.security.Role;
@@ -38,7 +39,7 @@ public class ClubAuthorizationService {
                 .orElse(false);
 
         if (!ok) {
-            throw new RuntimeException("Not allowed for this club");
+            throw new ForbiddenException("Not allowed for this club");
         }
     }
 
@@ -46,4 +47,3 @@ public class ClubAuthorizationService {
         requirePlatformAdminOrClubRole(email, clubId, EnumSet.of(ClubRole.ADMIN, ClubRole.STAFF));
     }
 }
-
