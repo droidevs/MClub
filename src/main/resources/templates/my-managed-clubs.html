@@ -31,6 +31,16 @@
                            class="btn btn-outline-success btn-sm rounded-pill">
                             <i class="bi bi-qr-code-scan"></i> Attendance
                         </a>
+
+                        <a th:href="@{/club-admin/clubs/{id}/events/new(id=${club.id})}"
+                           class="btn btn-outline-warning btn-sm rounded-pill">
+                            <i class="bi bi-calendar-plus"></i> New event
+                        </a>
+
+                        <a th:href="@{/club-admin/clubs/{id}/activities/new(id=${club.id})}"
+                           class="btn btn-outline-dark btn-sm rounded-pill">
+                            <i class="bi bi-plus-circle"></i> New activity
+                        </a>
                     </div>
                 </div>
             </div>

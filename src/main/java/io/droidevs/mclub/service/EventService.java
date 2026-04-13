@@ -46,4 +46,9 @@ public class EventService {
     public Page<EventDto> getAllEvents(org.springframework.data.domain.Pageable pageable) {
         return eventRepository.findAll(pageable).map(eventMapper::toDto);
     }
+
+    public Event getEvent(UUID id) {
+        return eventRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+    }
 }

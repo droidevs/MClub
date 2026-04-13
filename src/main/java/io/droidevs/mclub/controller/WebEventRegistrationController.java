@@ -26,6 +26,6 @@ public class WebEventRegistrationController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "Registration failed: " + e.getMessage());
         }
-        return "redirect:/events";
+        return "redirect:/events/" + eventId;
     }
 }

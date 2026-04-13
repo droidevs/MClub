@@ -19,29 +19,30 @@
         <div class="col" th:each="event : ${eventsPage.content}">
             <div class="card h-100 shadow-sm border-0 bg-light rounded-4">
                 <div class="card-body">
-                    <h5 class="card-title text-primary mb-1" th:text="${event.title}">Event Name</h5>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <!-- Make title clickable -->
+                            <h5 class="card-title mb-1">
+                                <a class="text-decoration-none" th:href="@{/events/{id}(id=${event.id})}" th:text="${event.title}">Event title</a>
+                            </h5>
 
-                    <div class="d-flex flex-wrap text-muted small mb-3">
-                        <span class="me-3">
-                            <i class="bi bi-geo-alt-fill text-danger"></i>
-                            <span th:text="${event.location}">Venue</span>
-                        </span>
-                        <span class="me-3">
-                            <i class="bi bi-clock-fill text-success"></i>
-                            <span th:text="${#temporals.format(event.startDate, 'dd MMM yyyy HH:mm')}">Date</span>
-                        </span>
-                        <span>
-                            <i class="bi bi-hourglass-split"></i>
-                            <span th:text="${#temporals.format(event.endDate, 'dd MMM yyyy HH:mm')}">End</span>
-                        </span>
-                    </div>
+                            <div class="d-flex flex-wrap text-muted small mb-3">
+                                <span class="me-3">
+                                    <i class="bi bi-geo-alt-fill text-danger"></i>
+                                    <span th:text="${event.location}">Venue</span>
+                                </span>
+                                <span class="me-3">
+                                    <i class="bi bi-clock-fill text-success"></i>
+                                    <span th:text="${#temporals.format(event.startDate, 'dd MMM yyyy HH:mm')}">Date</span>
+                                </span>
+                                <span>
+                                    <i class="bi bi-hourglass-split"></i>
+                                    <span th:text="${#temporals.format(event.endDate, 'dd MMM yyyy HH:mm')}">End</span>
+                                </span>
+                            </div>
 
-                    <p class="card-text text-secondary mb-3" th:text="${event.description}">Event details...</p>
-
-                    <div class="d-flex justify-content-between align-items-center border-top pt-3 flex-wrap gap-2">
-                        <span class="badge bg-secondary rounded-pill px-3 py-2">
-                            Club: <span th:text="${#strings.substring(event.clubId,0,8)}"></span>...
-                        </span>
+                            <p class="card-text text-secondary mb-3" th:text="${event.description}">Event details...</p>
+                        </div>
 
                         <div class="d-flex gap-2">
                             <form th:action="@{/events/{id}/register(id=${event.id})}" method="post" sec:authorize="hasRole('STUDENT')">
@@ -72,6 +73,29 @@
                     <div class="mt-3 small text-muted" th:attr="data-summary-for=${event.id}">
                         <span class="me-2"><i class="bi bi-star"></i> <span data-avg>—</span></span>
                         <span><i class="bi bi-people"></i> <span data-count>—</span> ratings</span>
+                    </div>
+
+                    <!-- Comments (students only) -->
+                    <div class="mt-3" sec:authorize="hasRole('STUDENT')" th:attr="data-comments-for=${event.id}">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="small text-muted"><i class="bi bi-chat-left-text"></i> Comments</div>
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill"
+                                    type="button"
+                                    th:attr="data-event-id=${event.id}"
+                                    onclick="toggleComments(this)">
+                                Show
+                            </button>
+                        </div>
+
+                        <div class="d-none" th:attr="id=${'commentsBox-' + event.id}">
+                            <div class="input-group mb-2">
+                                <input class="form-control" th:attr="id=${'commentInput-' + event.id}" placeholder="Write a comment…" />
+                                <button class="btn btn-primary" type="button" th:attr="data-event-id=${event.id}" onclick="postComment(this)">Post</button>
+                            </div>
+
+                            <div class="small text-muted mb-2" th:attr="id=${'commentsHint-' + event.id}"></div>
+                            <div th:attr="id=${'commentsList-' + event.id}"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -267,6 +291,170 @@
         } catch (e) {
             // ignore
         }
+    }
+
+    function toggleComments(btn) {
+        const eventId = btn.getAttribute('data-event-id');
+        const box = document.getElementById('commentsBox-' + eventId);
+        const isHidden = box.classList.contains('d-none');
+        if (isHidden) {
+            box.classList.remove('d-none');
+            btn.textContent = 'Hide';
+            loadComments(eventId);
+        } else {
+            box.classList.add('d-none');
+            btn.textContent = 'Show';
+        }
+    }
+
+    async function loadComments(eventId) {
+        const list = document.getElementById('commentsList-' + eventId);
+        const hint = document.getElementById('commentsHint-' + eventId);
+        list.innerHTML = '';
+        hint.textContent = 'Loading…';
+
+        try {
+            const res = await fetch(`/api/comments/event/${eventId}`);
+            if (!res.ok) {
+                hint.textContent = 'Could not load comments.';
+                return;
+            }
+            const data = await res.json();
+            hint.textContent = data.length ? '' : 'Be the first to comment.';
+            list.appendChild(renderCommentTree(eventId, data));
+        } catch (e) {
+            hint.textContent = 'Network error.';
+        }
+    }
+
+    function renderCommentTree(eventId, comments) {
+        const container = document.createElement('div');
+        container.className = 'd-flex flex-column gap-2';
+        for (const c of comments) {
+            container.appendChild(renderComment(eventId, c, 0));
+        }
+        return container;
+    }
+
+    function renderComment(eventId, c, depth) {
+        const wrap = document.createElement('div');
+        wrap.className = 'border rounded-3 p-2 bg-white';
+        wrap.style.marginLeft = Math.min(depth * 18, 54) + 'px';
+
+        const meta = document.createElement('div');
+        meta.className = 'd-flex justify-content-between align-items-center mb-1';
+        meta.innerHTML = `<div class="small text-muted"><strong>${escapeHtml(c.authorFullName)}</strong> · ${c.createdAt ? new Date(c.createdAt).toLocaleString() : ''}</div>`;
+
+        const body = document.createElement('div');
+        body.className = 'text-dark';
+        body.textContent = c.content;
+
+        const actions = document.createElement('div');
+        actions.className = 'd-flex gap-2 mt-2 flex-wrap';
+
+        const likeBtn = document.createElement('button');
+        likeBtn.className = 'btn btn-sm ' + (c.likedByMe ? 'btn-primary' : 'btn-outline-primary');
+        likeBtn.type = 'button';
+        likeBtn.innerHTML = `<i class="bi bi-hand-thumbs-up"></i> <span>${c.likeCount}</span>`;
+        likeBtn.onclick = () => toggleLike(eventId, c.id);
+
+        const replyBtn = document.createElement('button');
+        replyBtn.className = 'btn btn-sm btn-outline-secondary';
+        replyBtn.type = 'button';
+        replyBtn.innerHTML = `<i class="bi bi-reply"></i> Reply`;
+
+        const replyBox = document.createElement('div');
+        replyBox.className = 'd-none mt-2';
+        replyBox.innerHTML = `
+            <div class="input-group input-group-sm">
+                <input class="form-control" placeholder="Write a reply…" />
+                <button class="btn btn-outline-primary" type="button">Send</button>
+            </div>
+        `;
+
+        replyBtn.onclick = () => {
+            replyBox.classList.toggle('d-none');
+        };
+
+        replyBox.querySelector('button').onclick = () => {
+            const txt = replyBox.querySelector('input').value.trim();
+            if (!txt) return;
+            postReply(eventId, c.id, txt);
+            replyBox.querySelector('input').value = '';
+        };
+
+        actions.appendChild(likeBtn);
+        actions.appendChild(replyBtn);
+
+        wrap.appendChild(meta);
+        wrap.appendChild(body);
+        wrap.appendChild(actions);
+        wrap.appendChild(replyBox);
+
+        if (c.replies && c.replies.length) {
+            const repliesWrap = document.createElement('div');
+            repliesWrap.className = 'mt-2 d-flex flex-column gap-2';
+            for (const r of c.replies) {
+                repliesWrap.appendChild(renderComment(eventId, r, depth + 1));
+            }
+            wrap.appendChild(repliesWrap);
+        }
+
+        return wrap;
+    }
+
+    async function postComment(btn) {
+        const eventId = btn.getAttribute('data-event-id');
+        const input = document.getElementById('commentInput-' + eventId);
+        const content = input.value.trim();
+        if (!content) return;
+
+        try {
+            const res = await fetch(`/api/comments/event/${eventId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            if (!res.ok) return;
+            input.value = '';
+            await loadComments(eventId);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    async function postReply(eventId, parentId, content) {
+        try {
+            const res = await fetch(`/api/comments/event/${eventId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, parentId })
+            });
+            if (!res.ok) return;
+            await loadComments(eventId);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    async function toggleLike(eventId, commentId) {
+        try {
+            const res = await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
+            if (!res.ok) return;
+            await loadComments(eventId);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    function escapeHtml(str) {
+        return (str || '').replace(/[&<>"']/g, m => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[m]));
     }
 
     // Load summaries for all visible events

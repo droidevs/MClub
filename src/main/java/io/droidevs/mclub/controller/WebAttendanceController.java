@@ -9,8 +9,8 @@ import io.droidevs.mclub.exception.ResourceNotFoundException;
 import io.droidevs.mclub.repository.ClubRepository;
 import io.droidevs.mclub.repository.EventRepository;
 import io.droidevs.mclub.repository.MembershipRepository;
-import io.droidevs.mclub.repository.UserRepository;
 import io.droidevs.mclub.service.AttendanceService;
+import io.droidevs.mclub.service.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -29,8 +29,8 @@ public class WebAttendanceController {
     private final ClubRepository clubRepository;
     private final EventRepository eventRepository;
     private final MembershipRepository membershipRepository;
-    private final UserRepository userRepository;
     private final AttendanceService attendanceService;
+    private final CurrentUserService currentUserService;
 
     private boolean canManageClub(UUID clubId, UUID userId) {
         return membershipRepository.findByClubId(clubId).stream()
@@ -40,7 +40,7 @@ public class WebAttendanceController {
 
     @GetMapping("/clubs/{clubId}/attendance")
     public String clubAttendanceEvents(@PathVariable UUID clubId, Model model, Authentication auth) {
-        User user = userRepository.findByEmail(auth.getName()).orElseThrow();
+        User user = currentUserService.requireUser(auth);
         if (!canManageClub(clubId, user.getId())) {
             return "redirect:/";
         }
@@ -60,7 +60,7 @@ public class WebAttendanceController {
                                    Authentication auth) {
         var event = eventRepository.findById(eventId).orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
-        User user = userRepository.findByEmail(auth.getName()).orElseThrow();
+        User user = currentUserService.requireUser(auth);
         UUID clubId = event.getClub().getId();
         if (!canManageClub(clubId, user.getId())) {
             return "redirect:/";

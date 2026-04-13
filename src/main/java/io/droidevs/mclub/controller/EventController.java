@@ -2,6 +2,7 @@ package io.droidevs.mclub.controller;
 
 import io.droidevs.mclub.dto.*;
 import io.droidevs.mclub.service.*;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -18,8 +19,11 @@ public class EventController {
     private final RegistrationService registrationService;
 
     @PostMapping
-    public ResponseEntity<EventDto> createEvent(@RequestBody EventDto dto, Authentication auth) {
-        return ResponseEntity.ok(eventService.createEvent(dto, auth.getName()));
+    public ResponseEntity<EventDto> createEvent(@Valid @RequestBody EventCreateRequest request, Authentication auth) {
+        if (auth == null) {
+            return ResponseEntity.status(401).build();
+        }
+        return ResponseEntity.ok(eventService.createEvent(request.toDto(), auth.getName()));
     }
 
     @GetMapping("/club/{clubId}")
