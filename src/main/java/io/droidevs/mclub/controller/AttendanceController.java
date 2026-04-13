@@ -2,6 +2,7 @@ package io.droidevs.mclub.controller;
 
 import io.droidevs.mclub.dto.*;
 import io.droidevs.mclub.service.AttendanceService;
+import io.droidevs.mclub.service.EventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
+    private final EventService eventService;
 
     // Organizer: open/update window + generate a fresh QR token for the event
     @PostMapping("/api/events/{eventId}/attendance/window")
@@ -36,6 +38,10 @@ public class AttendanceController {
     // Organizer: list attendance
     @GetMapping("/api/events/{eventId}/attendance")
     public ResponseEntity<List<AttendanceRecordDto>> list(@PathVariable UUID eventId, Authentication auth) {
+        if (auth == null) {
+            return ResponseEntity.status(401).build();
+        }
+        eventService.requireCanManageEvent(auth.getName(), eventId);
         return ResponseEntity.ok(attendanceService.listAttendance(eventId, auth.getName()));
     }
 

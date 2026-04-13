@@ -36,8 +36,18 @@ public class EventController {
         return ResponseEntity.ok(registrationService.register(eventId, auth.getName()));
     }
 
+    @GetMapping("/{eventId}/registrations/summary")
+    public ResponseEntity<EventRegistrationsSummaryDto> registrationsSummary(@PathVariable UUID eventId) {
+        return ResponseEntity.ok(new EventRegistrationsSummaryDto(eventId, registrationService.countRegistrations(eventId)));
+    }
+
     @GetMapping("/{eventId}/participants")
-    public ResponseEntity<List<RegistrationDto>> getParticipants(@PathVariable UUID eventId) {
+    public ResponseEntity<List<RegistrationDto>> getParticipants(@PathVariable UUID eventId, Authentication auth) {
+        if (auth == null) {
+            return ResponseEntity.status(401).build();
+        }
+        // Only platform admin or club admin/staff can view full participant list
+        eventService.requireCanManageEvent(auth.getName(), eventId);
         return ResponseEntity.ok(registrationService.getRegistrations(eventId));
     }
 }

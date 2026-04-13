@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{layout :: head}"></head>
+<body th:replace="~{layout :: body(content=~{this :: content})}">
+
+<div class="container" th:fragment="content">
+    <div class="d-flex justify-content-between align-items-start mt-4">
+        <div>
+            <h2 class="display-6 mb-1">Event admin</h2>
+            <div class="text-muted" th:text="${event.title}">Event title</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm" th:href="@{/events/{id}(id=${event.id})}">Back to event</a>
+            <a class="btn btn-outline-secondary btn-sm" th:href="@{/club-admin/clubs}">Back to clubs</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-2">
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light"><strong>Summary</strong></div>
+                <div class="card-body">
+                    <div class="small text-muted">Registrations</div>
+                    <div class="fs-4" id="regCount">—</div>
+                    <hr/>
+                    <div class="small text-muted">Attendance (check-ins)</div>
+                    <div class="fs-4" id="attCount">—</div>
+                    <hr/>
+                    <div class="small text-muted">Rating</div>
+                    <div class="fs-6" id="ratingSummary">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <strong>Registrations</strong>
+                    <button class="btn btn-sm btn-outline-primary" id="loadRegsBtn">Load</button>
+                </div>
+                <div class="card-body">
+                    <div class="text-muted small" id="regsHint">Not loaded</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                            <tr><th>Email</th><th>Created at</th></tr>
+                            </thead>
+                            <tbody id="regsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mt-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <strong>Check-ins</strong>
+                    <button class="btn btn-sm btn-outline-primary" id="loadAttBtn">Load</button>
+                </div>
+                <div class="card-body">
+                    <div class="text-muted small" id="attHint">Not loaded</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                            <tr><th>Email</th><th>Checked in at</th><th>Method</th></tr>
+                            </thead>
+                            <tbody id="attBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mt-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <strong>Ratings</strong>
+                    <button class="btn btn-sm btn-outline-primary" id="loadRatingsBtn">Load</button>
+                </div>
+                <div class="card-body">
+                    <div class="text-muted small" id="ratingsHint">Not loaded</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                            <tr><th>Student</th><th>Rating</th><th>Comment</th><th>Updated</th></tr>
+                            </thead>
+                            <tbody id="ratingsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const EVENT_ID = /*[[${event.id}]]*/ null;
+
+        function esc(s) {
+            return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+        }
+
+        async function loadSummary() {
+            try {
+                const regRes = await fetch(`/api/events/${EVENT_ID}/registrations/summary`);
+                if (regRes.ok) {
+                    const reg = await regRes.json();
+                    document.getElementById('regCount').textContent = reg.registrations;
+                }
+            } catch (_) {}
+
+            try {
+                const rateRes = await fetch(`/api/events/${EVENT_ID}/ratings/summary`);
+                if (rateRes.ok) {
+                    const s = await rateRes.json();
+                    document.getElementById('ratingSummary').textContent = `${(s.average || 0).toFixed(1)} / 5 (${s.count || 0})`;
+                }
+            } catch (_) {}
+
+            // attendance count isn’t exposed as a public summary; for admins we can infer from list call when loaded.
+        }
+
+        async function loadRegistrations() {
+            const hint = document.getElementById('regsHint');
+            const body = document.getElementById('regsBody');
+            hint.textContent = 'Loading…';
+            body.innerHTML = '';
+
+            const res = await fetch(`/api/events/${EVENT_ID}/participants`);
+            if (!res.ok) {
+                hint.textContent = 'Failed to load (auth/role?)';
+                return;
+            }
+            const data = await res.json();
+            hint.textContent = `${data.length} registrations`;
+            document.getElementById('regCount').textContent = data.length;
+
+            data.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${esc(r.userEmail)}</td><td class="text-muted">${r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</td>`;
+                body.appendChild(tr);
+            });
+        }
+
+        async function loadAttendance() {
+            const hint = document.getElementById('attHint');
+            const body = document.getElementById('attBody');
+            hint.textContent = 'Loading…';
+            body.innerHTML = '';
+
+            const res = await fetch(`/api/events/${EVENT_ID}/attendance`);
+            if (!res.ok) {
+                hint.textContent = 'Failed to load (auth/role?)';
+                return;
+            }
+            const data = await res.json();
+            hint.textContent = `${data.length} check-ins`;
+            document.getElementById('attCount').textContent = data.length;
+
+            data.forEach(a => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${esc(a.userEmail)}</td><td class="text-muted">${a.checkedInAt ? new Date(a.checkedInAt).toLocaleString() : ''}</td><td>${esc(a.method)}</td>`;
+                body.appendChild(tr);
+            });
+        }
+
+        async function loadRatings() {
+            const hint = document.getElementById('ratingsHint');
+            const body = document.getElementById('ratingsBody');
+            hint.textContent = 'Loading…';
+            body.innerHTML = '';
+
+            const res = await fetch(`/api/events/${EVENT_ID}/ratings`);
+            if (!res.ok) {
+                hint.textContent = 'Failed to load (auth/role?)';
+                return;
+            }
+            const data = await res.json();
+            hint.textContent = `${data.length} ratings`;
+
+            data.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${esc(r.studentEmail)}</td><td>${r.rating}</td><td>${esc(r.comment)}</td><td class="text-muted">${r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ''}</td>`;
+                body.appendChild(tr);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSummary();
+            document.getElementById('loadRegsBtn')?.addEventListener('click', loadRegistrations);
+            document.getElementById('loadAttBtn')?.addEventListener('click', loadAttendance);
+            document.getElementById('loadRatingsBtn')?.addEventListener('click', loadRatings);
+        });
+    </script>
+</div>
+
+</body>
+</html>
+

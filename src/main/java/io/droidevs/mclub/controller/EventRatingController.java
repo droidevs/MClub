@@ -4,6 +4,7 @@ import io.droidevs.mclub.dto.EventRatingDto;
 import io.droidevs.mclub.dto.EventRatingRequest;
 import io.droidevs.mclub.dto.EventRatingSummaryDto;
 import io.droidevs.mclub.service.EventRatingService;
+import io.droidevs.mclub.service.EventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class EventRatingController {
 
     private final EventRatingService eventRatingService;
+    private final EventService eventService;
 
     // Student creates/updates their rating
     @PostMapping
@@ -41,11 +43,13 @@ public class EventRatingController {
         return ResponseEntity.ok(eventRatingService.getSummary(eventId));
     }
 
-    // Full list: platform admin only for now (club-scoped admin/staff can be added next)
+    // Full list: club admin/staff or platform admin
     @GetMapping
-    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
-    public ResponseEntity<List<EventRatingDto>> list(@PathVariable UUID eventId) {
+    public ResponseEntity<List<EventRatingDto>> list(@PathVariable UUID eventId, Authentication auth) {
+        if (auth == null) {
+            return ResponseEntity.status(401).build();
+        }
+        eventService.requireCanManageEvent(auth.getName(), eventId);
         return ResponseEntity.ok(eventRatingService.getAllRatingsForEvent(eventId));
     }
 }
-

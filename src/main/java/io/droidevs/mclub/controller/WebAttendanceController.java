@@ -11,6 +11,7 @@ import io.droidevs.mclub.repository.EventRepository;
 import io.droidevs.mclub.repository.MembershipRepository;
 import io.droidevs.mclub.service.AttendanceService;
 import io.droidevs.mclub.service.CurrentUserService;
+import io.droidevs.mclub.service.EventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -31,6 +32,7 @@ public class WebAttendanceController {
     private final MembershipRepository membershipRepository;
     private final AttendanceService attendanceService;
     private final CurrentUserService currentUserService;
+    private final EventService eventService;
 
     private boolean canManageClub(UUID clubId, UUID userId) {
         return membershipRepository.findByClubId(clubId).stream()
@@ -120,5 +122,17 @@ public class WebAttendanceController {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/club-admin/events/" + eventId + "/attendance";
+    }
+
+    @GetMapping("/events/{eventId}/admin")
+    public String eventAdmin(@PathVariable UUID eventId, Model model, Authentication auth) {
+        // Reuse attendanceService authorization via listAttendance (it enforces club admin/staff)
+        // But here we just want the event for the page and rely on REST calls for data lists.
+        var event = eventService.getEvent(eventId);
+        // Ensure user can manage this event
+        eventService.requireCanManageEvent(auth.getName(), eventId);
+
+        model.addAttribute("event", event);
+        return "event-admin";
     }
 }

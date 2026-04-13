@@ -55,40 +55,96 @@
             </div>
         </div>
     </form>
-</div>
 
-<script th:inline="javascript">
-    document.getElementById('createEventForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const formEl = /** @type {HTMLFormElement} */ (e.target);
-        const fd = new FormData(formEl);
-
-        const dto = {
-            clubId: fd.get('clubId'),
-            title: fd.get('title'),
-            description: fd.get('description'),
-            location: fd.get('location'),
-            startDate: fd.get('startDate'),
-            endDate: fd.get('endDate')
-        };
-
-        const res = await fetch('/api/events', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dto)
-        });
-
-        if (res.ok) {
-            // Back to club admin list
-            window.location.href = '/club-admin/clubs';
-            return;
+    <!-- Keep the script INSIDE the content fragment; otherwise it gets dropped by layout.html -->
+    <script th:inline="javascript">
+        function toIsoLocalDateTime(value) {
+            // HTML datetime-local typically returns: "YYYY-MM-DDTHH:mm" (no seconds)
+            // Jackson LocalDateTime expects ISO_LOCAL_DATE_TIME. Ensure we send seconds.
+            if (!value) return null;
+            return value.length === 16 ? (value + ":00") : value;
         }
 
-        const text = await res.text();
-        alert(text || 'Could not create event');
-    });
-</script>
+        async function readResponseBody(res) {
+            const ct = res.headers.get('content-type') || '';
+            try {
+                if (ct.includes('application/json')) {
+                    return JSON.stringify(await res.json());
+                }
+            } catch (_) {
+                // ignore
+            }
+            try {
+                return await res.text();
+            } catch (_) {
+                return '';
+            }
+        }
+
+        // Attach listener after DOM is ready (safe if fragment is injected)
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('createEventForm');
+            console.log('[createEvent] DOMContentLoaded, form found:', !!form);
+            if (!form) return;
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                console.log('[createEvent] submit handler fired');
+
+                const fd = new FormData(form);
+
+                const dto = {
+                    clubId: String(fd.get('clubId') || ''),
+                    title: String(fd.get('title') || ''),
+                    description: String(fd.get('description') || ''),
+                    location: String(fd.get('location') || ''),
+                    startDate: toIsoLocalDateTime(String(fd.get('startDate') || '')),
+                    endDate: toIsoLocalDateTime(String(fd.get('endDate') || ''))
+                };
+
+                console.log('[createEvent] payload', dto);
+
+                let res;
+                try {
+                    res = await fetch('/api/events', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(dto)
+                    });
+                } catch (err) {
+                    console.error('[createEvent] network error', err);
+                    alert('Network error calling /api/events. Check console.');
+                    return;
+                }
+
+                const body = await readResponseBody(res);
+
+                console.log('[createEvent] response', {
+                    ok: res.ok,
+                    status: res.status,
+                    redirected: res.redirected,
+                    url: res.url,
+                    body
+                });
+
+                if (res.ok) {
+                    window.location.href = '/club-admin/clubs';
+                    return;
+                }
+
+                if (res.redirected && res.url && res.url.includes('/login')) {
+                    alert('Your session is not authenticated. Please login again, then retry.');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                alert(body || 'Could not create event');
+            });
+        });
+    </script>
+</div>
 
 </body>
 </html>

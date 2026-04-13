@@ -27,4 +27,11 @@ public class RegistrationService {
     public List<RegistrationDto> getRegistrations(UUID eventId) {
         return registrationRepository.findByEventId(eventId).stream().map(registrationMapper::toDto).collect(Collectors.toList());
     }
+    public long countRegistrations(UUID eventId) {
+        // ensure event exists (consistent error)
+        if (eventRepository.findById(eventId).isEmpty()) {
+            throw new ResourceNotFoundException("Event not found");
+        }
+        return registrationRepository.countByEventId(eventId);
+    }
 }

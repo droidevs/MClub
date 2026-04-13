@@ -24,6 +24,28 @@ public class EventService {
     private final ClubAuthorizationService clubAuthorizationService;
 
     public EventDto createEvent(EventDto dto, String email) {
+        if (dto.getClubId() == null) {
+            throw new IllegalArgumentException("clubId is required");
+        }
+        if (dto.getTitle() == null || dto.getTitle().isBlank()) {
+            throw new IllegalArgumentException("title is required");
+        }
+        if (dto.getDescription() == null || dto.getDescription().isBlank()) {
+            throw new IllegalArgumentException("description is required");
+        }
+        if (dto.getLocation() == null || dto.getLocation().isBlank()) {
+            throw new IllegalArgumentException("location is required");
+        }
+        if (dto.getStartDate() == null) {
+            throw new IllegalArgumentException("startDate is required");
+        }
+        if (dto.getEndDate() == null) {
+            throw new IllegalArgumentException("endDate is required");
+        }
+        if (dto.getEndDate().isBefore(dto.getStartDate())) {
+            throw new IllegalArgumentException("endDate must be after startDate");
+        }
+
         Club club = clubRepository.findById(dto.getClubId())
                 .orElseThrow(() -> new ResourceNotFoundException("Club not found"));
 
@@ -50,5 +72,11 @@ public class EventService {
     public Event getEvent(UUID id) {
         return eventRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+    }
+
+    public void requireCanManageEvent(String email, UUID eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+        clubAuthorizationService.requirePlatformAdminOrClubAdminOrStaff(email, event.getClub().getId());
     }
 }
