@@ -224,6 +224,17 @@ public class CommentService {
         }
     }
 
+    @Transactional
+    public CommentDto reply(UUID parentCommentId, CommentCreateRequest request, String studentEmail) {
+        Comment parent = commentRepository.findById(parentCommentId).orElseThrow();
+
+        CommentCreateRequest req = new CommentCreateRequest();
+        req.setContent(request.getContent());
+        req.setParentId(parent.getId());
+
+        return addComment(parent.getTargetType(), parent.getTargetId(), req, studentEmail);
+    }
+
     private CommentDto toDto(Comment c, long likeCount, boolean likedByMe) {
         CommentDto dto = new CommentDto();
         dto.setId(c.getId());

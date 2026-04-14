@@ -14,7 +14,7 @@
         </div>
         <div class="d-flex gap-2">
             <a class="btn btn-outline-secondary" th:href="@{/events/{id}(id=${event.id})}">Back to event</a>
-            <a class="btn btn-outline-primary" th:href="@{/events/{id}/comments(id=${event.id})}">View comments</a>
+            <a class="btn btn-outline-primary" th:href="@{/comments/EVENT/{id}(id=${event.id})}">View comments</a>
         </div>
     </div>
 

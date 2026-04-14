@@ -53,4 +53,18 @@ public class CommentController {
         commentService.toggleLike(commentId, auth.getName());
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * Create a reply to an existing comment.
+     *
+     * Note: This is functionally equivalent to POST /api/comments/{targetType}/{targetId} with parentId set,
+     * but provides a clear, well-named endpoint for clients.
+     */
+    @PostMapping("/{commentId}/reply")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<CommentDto> reply(@PathVariable UUID commentId,
+                                           @Valid @RequestBody CommentCreateRequest request,
+                                           Authentication auth) {
+        return ResponseEntity.ok(commentService.reply(commentId, request, auth.getName()));
+    }
 }

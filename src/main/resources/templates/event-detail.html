@@ -32,7 +32,7 @@
             <div class="card shadow-sm border-0 mt-3">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Comments</h5>
-                    <a class="btn btn-sm btn-outline-secondary" th:href="@{/events/{id}/comments(id=${event.id})}">
+                    <a class="btn btn-sm btn-outline-secondary" th:href="@{/comments/EVENT/{id}(id=${event.id})}">
                         View all
                     </a>
                 </div>
@@ -59,7 +59,7 @@
                     </div>
 
                     <div class="mb-2" sec:authorize="hasRole('STUDENT')">
-                        <form th:action="@{/events/{id}/comments(id=${event.id})}" method="post">
+                        <form id="eventCommentForm" th:attr="data-event-id=${event.id}">
                             <label class="form-label">Add a comment</label>
                             <textarea name="content" class="form-control" rows="3" maxlength="2000" placeholder="Be respectful…" required></textarea>
                             <div class="d-flex justify-content-end mt-2">
@@ -120,6 +120,52 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const form = document.getElementById('eventCommentForm');
+        if (!form) return;
+
+        const getCsrf = () => {
+            const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
+            return token ? { header, token } : null;
+        };
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const eventId = form.dataset.eventId;
+            const content = form.querySelector('textarea[name="content"]').value.trim();
+            if (!content) return;
+
+            const btn = form.querySelector('button[type="submit"]');
+            btn.disabled = true;
+
+            try {
+                const csrf = getCsrf();
+                const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+                if (csrf) headers[csrf.header] = csrf.token;
+
+                const resp = await fetch(`/api/comments/EVENT/${encodeURIComponent(eventId)}`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ content, parentId: null })
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    throw new Error(`HTTP ${resp.status}${text ? ' - ' + text : ''}`);
+                }
+
+                window.location.reload();
+            } catch (err) {
+                alert('Could not post comment: ' + err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    })();
+</script>
 
 </body>
 </html>
