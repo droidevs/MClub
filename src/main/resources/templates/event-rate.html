@@ -33,7 +33,7 @@
                         <option value="2">2 - Bad</option>
                         <option value="1">1 - Terrible</option>
                     </select>
-                    <div class="form-text">You can rate only if you attended. Some events may allow rating only after they end.</div>
+                    <div class="form-text">You can rate anytime after you’ve attended this event. Submitting again will update your previous rating.</div>
                 </div>
 
                 <div class="mb-3">
@@ -51,7 +51,7 @@
     <div class="mt-3" th:if="${myRating != null}">
         <div class="text-muted small">Your current rating:</div>
         <div class="fw-semibold" th:text="${myRating.rating} + ' / 5'">5 / 5</div>
-        <div class="text-muted" th:if="${myRating.comment != null && !#strings.isEmpty(myRating.comment)}" th:text="myRating.comment"></div>
+        <div class="text-muted" th:if="${myRating.comment != null && !#strings.isEmpty(myRating.comment)}" th:text="${myRating.comment}"></div>
     </div>
 </div>
 

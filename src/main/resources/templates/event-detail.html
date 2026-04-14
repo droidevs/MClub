@@ -38,7 +38,7 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-2" sec:authorize="hasRole('STUDENT')">
-                        <form th:action="@{/comments/EVENT/{id}(id=${event.id})}" method="post">
+                        <form th:action="@{/events/{id}/comments(id=${event.id})}" method="post">
                             <label class="form-label">Add a comment</label>
                             <textarea name="content" class="form-control" rows="3" maxlength="2000" placeholder="Be respectful…" required></textarea>
                             <div class="d-flex justify-content-end mt-2">

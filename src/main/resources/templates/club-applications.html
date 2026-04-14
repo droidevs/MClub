@@ -33,13 +33,15 @@
                             <span th:text="${app.submittedByName}">Name</span><br>
                             <small class="text-muted" th:text="${app.submittedByEmail}">user@school.edu</small>
                         </td>
-                        <td th:text="${#temporals.format(app.createdAt, 'dd MMM yyyy')}">Date</td>
+                        <td th:text="${app.createdAt != null ? #temporals.format(app.createdAt, 'dd MMM yyyy') : '—'}">Date</td>
                         <td class="pe-4">
                             <div class="d-flex justify-content-center gap-2">
                                 <form th:action="@{/club-applications/{id}/approve(id=${app.id})}" method="post" sec:authorize="hasRole('PLATFORM_ADMIN')">
+                                    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                     <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm">Approve</button>
                                 </form>
                                 <form th:action="@{/club-applications/{id}/reject(id=${app.id})}" method="post" sec:authorize="hasRole('PLATFORM_ADMIN')">
+                                    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                     <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 shadow-sm">Reject</button>
                                 </form>
                             </div>

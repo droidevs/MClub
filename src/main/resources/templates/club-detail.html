@@ -44,7 +44,8 @@
                                     <div class="fw-semibold" th:text="${e.title}">Event</div>
                                     <div class="text-muted small">
                                         <i class="bi bi-clock"></i>
-                                        <span th:text="${#temporals.format(e.startDate, 'dd MMM yyyy HH:mm')}"></span>
+                                        <span th:if="${e.startDate != null}" th:text="${#temporals.format(e.startDate, 'dd MMM yyyy HH:mm')}"></span>
+                                        <span th:if="${e.startDate == null}">TBD</span>
                                     </div>
                                 </div>
                                 <a class="btn btn-outline-primary btn-sm" th:href="@{/events/{id}(id=${e.id})}">Open</a>
@@ -72,7 +73,8 @@
                                     <div class="fw-semibold" th:text="${a.title}">Activity</div>
                                     <div class="text-muted small">
                                         <i class="bi bi-clock"></i>
-                                        <span th:text="${#temporals.format(a.date, 'dd MMM yyyy HH:mm')}"></span>
+                                        <span th:if="${a.date != null}" th:text="${#temporals.format(a.date, 'dd MMM yyyy HH:mm')}"></span>
+                                        <span th:if="${a.date == null}">—</span>
                                     </div>
                                 </div>
                                 <a class="btn btn-outline-primary btn-sm" th:if="${a.eventId != null}" th:href="@{/events/{id}(id=${a.eventId})}">Event</a>

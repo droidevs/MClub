@@ -77,8 +77,7 @@ public class EventService {
 
     public Event getEvent(UUID id) {
         return eventRepository.findByIdWithClub(id)
-                .orElseGet(() -> eventRepository.findById(id)
-                        .orElseThrow(() -> new ResourceNotFoundException("Event not found")));
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
     }
 
     public void requireCanManageEvent(String email, UUID eventId) {

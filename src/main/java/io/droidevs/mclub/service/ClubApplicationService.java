@@ -37,7 +37,7 @@ public class ClubApplicationService {
     }
 
     public List<ClubApplicationDto> getPendingApplications() {
-        return applicationRepository.findByStatus("PENDING").stream()
+        return applicationRepository.findByStatusWithSubmittedBy("PENDING").stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }

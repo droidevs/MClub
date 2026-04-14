@@ -16,6 +16,7 @@ public class WebEventCommentsController {
 
     @GetMapping("/{eventId}/comments")
     public String eventComments(@PathVariable UUID eventId) {
+        // Dedicated comments page (supports child replies + posting)
         return "redirect:/comments/EVENT/" + eventId;
     }
 
@@ -23,7 +24,7 @@ public class WebEventCommentsController {
     @PreAuthorize("hasRole('STUDENT')")
     public String postEventComment(@PathVariable UUID eventId,
                                    @Valid CommentCreateRequest form) {
-        // legacy endpoint - handled by generic comments controller/page
+        // Post goes through the generic comments controller, keep URL pattern consistent for the UI.
         return "redirect:/comments/EVENT/" + eventId;
     }
 
@@ -32,7 +33,6 @@ public class WebEventCommentsController {
     public String replyToEventComment(@PathVariable UUID eventId,
                                       @PathVariable UUID parentId,
                                       @Valid CommentCreateRequest form) {
-        // legacy endpoint - handled by generic comments controller/page
         return "redirect:/comments/EVENT/" + eventId;
     }
 }

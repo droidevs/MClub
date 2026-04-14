@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta http-equiv="refresh" th:content="|0; url=/comments/EVENT/${event != null ? event.id : ''}|" />
+    <meta http-equiv="refresh" th:content="|0; url=/events/${event != null ? event.id : ''}/comments|" />
 </head>
 <body>
 Redirecting…

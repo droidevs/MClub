@@ -13,10 +13,6 @@ public interface EventAttendanceRepository extends JpaRepository<EventAttendance
     Optional<EventAttendance> findByEventIdAndUserId(UUID eventId, UUID userId);
 
     @Query("select a from EventAttendance a join fetch a.user u join fetch a.event e where e.id = :eventId")
-    List<EventAttendance> findByEventId(@Param("eventId") UUID eventId);
-
-    // Alias with a clearer name for callers
-    @Query("select a from EventAttendance a join fetch a.user u join fetch a.event e where e.id = :eventId")
     List<EventAttendance> findByEventIdWithUserAndEvent(@Param("eventId") UUID eventId);
 
     long countByEventId(UUID eventId);
