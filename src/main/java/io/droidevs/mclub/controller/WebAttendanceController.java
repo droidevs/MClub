@@ -60,7 +60,8 @@ public class WebAttendanceController {
                                    @ModelAttribute("qrToken") String qrToken,
                                    Model model,
                                    Authentication auth) {
-        var event = eventRepository.findById(eventId).orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+        var event = eventRepository.findByIdWithClub(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
         User user = currentUserService.requireUser(auth);
         UUID clubId = event.getClub().getId();

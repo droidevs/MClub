@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{layout :: head}"></head>
+<body th:replace="~{layout :: body(content=~{this :: content})}">
+
+<div class="container" th:fragment="content">
+    <div class="row align-items-center mt-4 mb-3">
+        <div class="col">
+            <a class="text-decoration-none" th:href="@{/events}">
+                <i class="bi bi-arrow-left"></i> Back to events
+            </a>
+            <h2 class="display-6 mt-2 text-success"><i class="bi bi-qr-code-scan"></i> Check-in</h2>
+            <div class="text-muted">
+                <span th:text="${event.title}">Event title</span>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${message}" class="alert alert-success border-0 shadow-sm" th:text="${message}"></div>
+    <div th:if="${error}" class="alert alert-danger border-0 shadow-sm" th:text="${error}"></div>
+
+    <div class="card border-0 shadow-sm rounded-4" sec:authorize="hasRole('STUDENT')">
+        <div class="card-body">
+            <h5 class="card-title">Paste QR token</h5>
+            <p class="text-muted small mb-3">Scan the event QR code and paste the token here. Check-in works only while the attendance window is open.</p>
+
+            <form th:action="@{/events/{eventId}/check-in(eventId=${event.id})}" method="post">
+                <div class="mb-3">
+                    <label class="form-label" for="token">Token</label>
+                    <input class="form-control" id="token" name="token" placeholder="QR token" required />
+                </div>
+
+                <button class="btn btn-success rounded-pill px-4" type="submit">
+                    <i class="bi bi-check2-circle me-1"></i> Check in
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="alert alert-info border-0 shadow-sm mt-4" sec:authorize="!hasRole('STUDENT')">
+        This action is available for students only.
+    </div>
+</div>
+
+</body>
+</html>
+

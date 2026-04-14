@@ -37,11 +37,11 @@ public class WebClubAdminController {
     @GetMapping("/clubs")
     public String myManagedClubs(Model model, Authentication auth) {
         User user = userRepository.findByEmail(auth.getName()).orElseThrow();
-        // find clubs where this user is ADMIN/STAFF
-        List<Membership> memberships = membershipRepository.findAll().stream()
-                .filter(m -> m.getUser().getId().equals(user.getId())
-                        && (m.getRole() == ClubRole.ADMIN || m.getRole() == ClubRole.STAFF))
-                .collect(Collectors.toList());
+
+        // Fetch memberships with club eagerly to avoid LazyInitializationException in Thymeleaf
+        List<Membership> memberships = membershipRepository.findManagedByUserIdWithClub(
+                user.getId(), ClubRole.ADMIN, ClubRole.STAFF
+        );
 
         List<Club> managedClubs = memberships.stream().map(Membership::getClub).collect(Collectors.toList());
         model.addAttribute("clubs", managedClubs);
@@ -57,7 +57,8 @@ public class WebClubAdminController {
             return "redirect:/dashboard";
         }
 
-        List<Membership> pending = membershipRepository.findByClubIdAndStatus(clubId, MembershipStatus.PENDING);
+        // Eagerly fetch user+club to avoid LazyInitializationException in Thymeleaf
+        List<Membership> pending = membershipRepository.findByClubIdAndStatusWithUser(clubId, MembershipStatus.PENDING);
         model.addAttribute("club", club);
         model.addAttribute("applications", pending);
         return "membership-applications";
@@ -72,7 +73,8 @@ public class WebClubAdminController {
             return "redirect:/dashboard";
         }
 
-        List<Membership> members = membershipRepository.findByClubIdAndStatus(clubId, MembershipStatus.APPROVED);
+        // Eagerly fetch user+club to avoid LazyInitializationException in Thymeleaf
+        List<Membership> members = membershipRepository.findByClubIdAndStatusWithUserAndClub(clubId, MembershipStatus.APPROVED);
 
         model.addAttribute("club", club);
         model.addAttribute("members", members);

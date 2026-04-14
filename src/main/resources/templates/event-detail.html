@@ -102,13 +102,29 @@
 <script th:inline="javascript">
     const EVENT_ID = /*[[${event.id}]]*/ null;
 
+    function withTimeout(promise, ms) {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+        ]);
+    }
+
+    async function safeText(res) {
+        try { return await res.text(); } catch (_) { return ''; }
+    }
+
     async function loadRatingSummary() {
         const el = document.getElementById('ratingSummary');
+        el.textContent = 'Loading…';
         try {
-            const res = await fetch(`/api/events/${EVENT_ID}/ratings/summary`);
-            if (!res.ok) throw new Error('Failed');
+            // Backend endpoint is GET /api/events/{eventId}/ratings/summary
+            const res = await withTimeout(fetch(`/api/events/${EVENT_ID}/ratings/summary`, { credentials: 'same-origin' }), 8000);
+            if (!res.ok) {
+                el.textContent = 'No rating summary available.';
+                return;
+            }
             const data = await res.json();
-            el.textContent = `${data.average.toFixed(1)} / 5 (${data.count} ratings)`;
+            el.textContent = `${Number(data.average || 0).toFixed(1)} / 5 (${Number(data.count || 0)} ratings)`;
         } catch (e) {
             el.textContent = 'No rating summary available.';
         }
@@ -116,15 +132,16 @@
 
     async function submitRating() {
         const rating = Number(document.getElementById('ratingValue').value);
-        const comment = null; // detail page uses dropdown only for now
+        const comment = null;
         const res = await fetch(`/api/events/${EVENT_ID}/ratings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({ rating, comment })
         });
         if (!res.ok) {
-            const txt = await res.text();
-            alert(txt || 'Could not rate. Make sure you attended.');
+            const txt = await safeText(res);
+            alert(txt || (res.status === 401 ? 'Please login.' : 'Could not rate. Make sure you attended and the event has ended.'));
             return;
         }
         await loadRatingSummary();
@@ -171,10 +188,16 @@
         const hint = document.getElementById('commentsHint');
         const list = document.getElementById('commentsList');
         list.innerHTML = '';
+        hint.textContent = 'Loading…';
         try {
-            const res = await fetch(`/api/comments/event/${EVENT_ID}`);
+            const res = await withTimeout(fetch(`/api/comments/EVENT/${EVENT_ID}`, { credentials: 'same-origin' }), 8000);
+            if (!res.ok) {
+                const txt = await safeText(res);
+                hint.textContent = txt || (res.status === 401 ? 'Login to view comments.' : 'Failed to load');
+                return;
+            }
             const data = await res.json();
-            hint.textContent = `${data.length} threads`;
+            hint.textContent = data.length ? `${data.length} threads` : 'No comments yet';
             data.forEach(c => list.appendChild(renderComment(c, 0)));
         } catch (e) {
             hint.textContent = 'Failed to load';
@@ -182,24 +205,25 @@
     }
 
     async function postComment(content, parentId) {
-        const res = await fetch(`/api/comments/event/${EVENT_ID}`, {
+        const res = await fetch(`/api/comments/EVENT/${EVENT_ID}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
             body: JSON.stringify({ content, parentId: parentId || null })
         });
         if (!res.ok) {
-            const txt = await res.text();
-            alert(txt || 'Could not post comment');
+            const txt = await safeText(res);
+            alert(txt || (res.status === 401 ? 'Please login.' : 'Could not post comment'));
             return;
         }
         await loadComments();
     }
 
     async function toggleLike(commentId) {
-        const res = await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
+        const res = await fetch(`/api/comments/${commentId}/like`, { method: 'POST', credentials: 'same-origin' });
         if (!res.ok) {
-            const txt = await res.text();
-            alert(txt || 'Could not like');
+            const txt = await safeText(res);
+            alert(txt || (res.status === 401 ? 'Please login.' : 'Could not like'));
             return;
         }
         await loadComments();

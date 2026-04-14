@@ -29,7 +29,13 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/clubs", "/events", "/api/auth/**", "/login", "/register", "/css/**", "/js/**", "/error", "/favicon.ico").permitAll()
+                // Public pages
+                .requestMatchers("/", "/clubs", "/events", "/login", "/register", "/css/**", "/js/**", "/error", "/favicon.ico").permitAll()
+                // Event detail page should be viewable when logged in (and is the redirect target after registration)
+                .requestMatchers("/events/*").authenticated()
+                // Web actions
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/events/*/register").hasRole("STUDENT")
+                .requestMatchers("/api/auth/**").permitAll()
                 // Public read-only APIs used by UI
                 .requestMatchers(org.springframework.http.HttpMethod.GET,
                         "/api/events/*/ratings/summary",

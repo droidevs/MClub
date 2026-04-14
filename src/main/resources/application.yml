@@ -6,17 +6,31 @@ spring:
     username: mclub_user
     password: mclub_password
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: create
-    show-sql: true
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
     properties:
       hibernate:
+
+        jdbc:
+          time_zone: UTC
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+
+  # ── Flyway ──
+  flyway:
+    issuer-uri: http://localhost:8080
+    jwk-set-uri: http://localhost:8080/oauth/v2/keys
   docker:
     compose:
-      enabled: true
+      enabled: false
       file: compose.yaml
 server:
   port: 8080
@@ -24,3 +38,8 @@ app:
   jwt:
     secret: 9A4D3E5B1C7F8E2D6A0B9C4F5A6D7E8F1C3B2A4D5E6F7G8H9A0B1C2D3E4F5A6
     expiration: 86400000
+logging:
+  level:
+    org.flywaydb: DEBUG
+    org.springframework.boot.autoconfigure.flyway: DEBUG
+    org.hibernate.tool.schema: DEBUG

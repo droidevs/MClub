@@ -29,8 +29,8 @@ public class CommentService {
         User me = currentUserEmail != null ? userRepository.findByEmail(currentUserEmail).orElse(null) : null;
         UUID myId = me != null ? me.getId() : null;
 
-        // Fetch all comments for target, then build a tree in memory.
-        List<Comment> all = commentRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(targetType, targetId);
+        // Fetch all comments for target with author eagerly loaded
+        List<Comment> all = commentRepository.findThreadWithAuthor(targetType, targetId);
 
         // Precompute like counts + likedByMe (simple approach via per-comment lookups; OK for small sizes).
         // If you need scale, we can replace with aggregate queries.

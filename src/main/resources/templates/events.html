@@ -45,18 +45,16 @@
                         </div>
 
                         <div class="d-flex gap-2">
-                            <form th:action="@{/events/{id}/register(id=${event.id})}" method="post" sec:authorize="hasRole('STUDENT')">
+                            <form th:action="@{/events/{eventId}/register(eventId=${event.id})}" method="post" sec:authorize="hasRole('STUDENT')">
                                 <button type="submit" class="btn btn-primary rounded-pill px-4">Register</button>
                             </form>
 
-                            <!-- Student check-in: paste token from QR scanner app / camera scanner output -->
-                            <button type="button"
-                                    class="btn btn-outline-success rounded-pill"
-                                    sec:authorize="hasRole('STUDENT')"
-                                    th:attr="data-event-id=${event.id}"
-                                    onclick="openCheckInModal(this)">
+                            <!-- Student check-in: separate page (more reliable than modal) -->
+                            <a class="btn btn-outline-success rounded-pill"
+                               sec:authorize="hasRole('STUDENT')"
+                               th:href="@{/events/{eventId}/check-in(eventId=${event.id})}">
                                 <i class="bi bi-qr-code-scan me-1"></i>Check-in
-                            </button>
+                            </a>
 
                             <!-- Student rating -->
                             <button type="button"
@@ -76,27 +74,17 @@
                     </div>
 
                     <!-- Comments (students only) -->
-                    <div class="mt-3" sec:authorize="hasRole('STUDENT')" th:attr="data-comments-for=${event.id}">
+                    <div class="mt-3" sec:authorize="hasRole('STUDENT')">
                         <div class="d-flex align-items-center justify-content-between mb-2">
                             <div class="small text-muted"><i class="bi bi-chat-left-text"></i> Comments</div>
-                            <button class="btn btn-sm btn-outline-secondary rounded-pill"
-                                    type="button"
-                                    th:attr="data-event-id=${event.id}"
-                                    onclick="toggleComments(this)">
+                            <a class="btn btn-sm btn-outline-secondary rounded-pill"
+                               th:href="@{/events/{eventId}/comments(eventId=${event.id})}">
                                 Show
-                            </button>
+                            </a>
                         </div>
-
-                        <div class="d-none" th:attr="id=${'commentsBox-' + event.id}">
-                            <div class="input-group mb-2">
-                                <input class="form-control" th:attr="id=${'commentInput-' + event.id}" placeholder="Write a comment…" />
-                                <button class="btn btn-primary" type="button" th:attr="data-event-id=${event.id}" onclick="postComment(this)">Post</button>
-                            </div>
-
-                            <div class="small text-muted mb-2" th:attr="id=${'commentsHint-' + event.id}"></div>
-                            <div th:attr="id=${'commentsList-' + event.id}"></div>
-                        </div>
+                        <div class="small text-muted">View and post comments on a separate page.</div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -129,6 +117,7 @@
     </nav>
 
     <!-- Check-in Modal -->
+    <!-- NOTE: Kept in place for now, but the primary UX uses a separate page (/events/{id}/check-in). -->
     <div class="modal fade" id="checkInModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -140,13 +129,15 @@
                     <input type="hidden" id="checkInEventId" />
                     <label class="form-label" for="checkInToken">Paste token from the event QR</label>
                     <input class="form-control" id="checkInToken" placeholder="QR token" />
-                    <div class="form-text">Check-in works only inside the allowed time window.</div>
+                    <div class="form-text">
+                        Tip: if you don't have a token, leave this blank and we'll try a fallback check-in for this event.
+                    </div>
                     <div class="alert alert-danger mt-3 d-none" id="checkInError"></div>
                     <div class="alert alert-success mt-3 d-none" id="checkInSuccess"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-success" onclick="submitCheckIn()">Check in</button>
+                    <button type="button" class="btn btn-success" id="checkInSubmitBtn" onclick="submitCheckIn()">Check in</button>
                 </div>
             </div>
         </div>
@@ -184,7 +175,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-warning" onclick="submitRating()">Submit rating</button>
+                    <button type="button" class="btn btn-warning" id="rateSubmitBtn" onclick="submitRating()">Submit rating</button>
                 </div>
             </div>
         </div>
@@ -192,278 +183,224 @@
 </div>
 
 <script>
+    // ---- Bootstrap modal safety helpers (some pages run inline handlers before bootstrap is on window) ----
+    function getBootstrapModalCtor() {
+        // Bootstrap 5 attaches to window.bootstrap in browsers, but be defensive.
+        return (window.bootstrap && window.bootstrap.Modal) ? window.bootstrap.Modal : null;
+    }
+
+    function showModalById(id) {
+        const el = document.getElementById(id);
+        if (!el) {
+            console.warn('Modal element not found:', id);
+            return;
+        }
+
+        const ModalCtor = getBootstrapModalCtor();
+        if (!ModalCtor) {
+            console.warn('Bootstrap Modal not available (window.bootstrap.Modal missing).');
+            // As a last-resort fallback, simply reveal the modal content so the UI isn't dead.
+            el.classList.remove('fade');
+            el.classList.add('show');
+            el.style.display = 'block';
+            document.body.classList.add('modal-open');
+            return;
+        }
+
+        ModalCtor.getOrCreateInstance(el).show();
+    }
+
+    // Small alert helpers used by check-in + rating modals
+    function hideAlerts(prefix) {
+        const err = document.getElementById(prefix + 'Error');
+        const ok = document.getElementById(prefix + 'Success');
+        if (err) { err.classList.add('d-none'); err.textContent = ''; }
+        if (ok) { ok.classList.add('d-none'); ok.textContent = ''; }
+    }
+
+    function showError(prefix, message) {
+        const err = document.getElementById(prefix + 'Error');
+        if (!err) {
+            alert(message || 'Error');
+            return;
+        }
+        err.textContent = message || 'Error';
+        err.classList.remove('d-none');
+    }
+
+    function showSuccess(prefix, message) {
+        const ok = document.getElementById(prefix + 'Success');
+        if (!ok) return;
+        ok.textContent = message || 'Success';
+        ok.classList.remove('d-none');
+        // Auto-hide after a short delay
+        window.setTimeout(() => {
+            ok.classList.add('d-none');
+            ok.textContent = '';
+        }, 2500);
+    }
+
+    function setInlineAlert(id, message, kind) {
+        const el = document.getElementById(id);
+        if (!el) {
+            if (message) alert(message);
+            return;
+        }
+        el.textContent = message || '';
+        el.classList.toggle('d-none', !message);
+        el.classList.toggle('alert-danger', kind === 'danger');
+        el.classList.toggle('alert-success', kind === 'success');
+
+        if (message && kind === 'success') {
+            window.setTimeout(() => {
+                el.classList.add('d-none');
+                el.textContent = '';
+            }, 2000);
+        }
+    }
+
     function openCheckInModal(btn) {
-        document.getElementById('checkInEventId').value = btn.getAttribute('data-event-id');
-        document.getElementById('checkInToken').value = '';
-        hideAlerts('checkIn');
-        new bootstrap.Modal(document.getElementById('checkInModal')).show();
+        try {
+            document.getElementById('checkInEventId').value = btn.getAttribute('data-event-id');
+            document.getElementById('checkInToken').value = '';
+            hideAlerts('checkIn');
+            showModalById('checkInModal');
+        } catch (e) {
+            console.error('openCheckInModal failed', e);
+            alert('Could not open check-in dialog. Check browser console.');
+        }
     }
 
     async function submitCheckIn() {
         hideAlerts('checkIn');
 
+        const eventId = document.getElementById('checkInEventId').value;
         const token = document.getElementById('checkInToken').value.trim();
-        if (!token) {
-            showError('checkIn', 'Please paste the QR token.');
-            return;
-        }
+        const btn = document.getElementById('checkInSubmitBtn');
+        if (btn) btn.disabled = true;
 
         try {
-            const res = await fetch('/api/attendance/check-in', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
-            });
+            // Primary: QR token flow
+            if (token) {
+                const res = await fetch('/api/attendance/check-in', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ token })
+                });
 
-            const text = await res.text();
-            if (!res.ok) {
-                showError('checkIn', text || 'Check-in failed');
+                const ct = res.headers.get('content-type') || '';
+                const payload = ct.includes('application/json') ? await res.json() : await res.text();
+
+                if (!res.ok) {
+                    const msg = (payload && payload.message) ? payload.message : (typeof payload === 'string' ? payload : 'Check-in failed');
+                    showError('checkIn', msg);
+                    return;
+                }
+
+                showSuccess('checkIn', 'Checked in!');
                 return;
             }
 
-            showSuccess('checkIn', 'Checked in successfully. You can rate after the event ends.');
+            // Fallback: check-in by event id (works if attendance window is open)
+            if (!eventId) {
+                showError('checkIn', 'Missing event id');
+                return;
+            }
+
+            const res2 = await fetch(`/api/events/${eventId}/attendance/check-in`, {
+                method: 'POST',
+                credentials: 'same-origin'
+            });
+
+            const ct2 = res2.headers.get('content-type') || '';
+            const payload2 = ct2.includes('application/json') ? await res2.json() : await res2.text();
+
+            if (!res2.ok) {
+                const msg2 = (payload2 && payload2.message) ? payload2.message : (typeof payload2 === 'string' ? payload2 : 'Check-in failed');
+                showError('checkIn', msg2);
+                return;
+            }
+
+            showSuccess('checkIn', 'Checked in!');
         } catch (e) {
-            showError('checkIn', 'Network error.');
+            showError('checkIn', 'Network error');
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 
     function openRateModal(btn) {
-        document.getElementById('rateEventId').value = btn.getAttribute('data-event-id');
-        document.getElementById('rateValue').value = '5';
-        document.getElementById('rateComment').value = '';
-        hideAlerts('rate');
-        new bootstrap.Modal(document.getElementById('rateModal')).show();
+        try {
+            document.getElementById('rateEventId').value = btn.getAttribute('data-event-id');
+            document.getElementById('rateValue').value = '5';
+            document.getElementById('rateComment').value = '';
+            hideAlerts('rate');
+            showModalById('rateModal');
+        } catch (e) {
+            console.error('openRateModal failed', e);
+            alert('Could not open rating dialog. Check browser console.');
+        }
     }
 
     async function submitRating() {
         hideAlerts('rate');
 
         const eventId = document.getElementById('rateEventId').value;
-        const rating = parseInt(document.getElementById('rateValue').value, 10);
-        const comment = document.getElementById('rateComment').value;
+        const rating = Number(document.getElementById('rateValue').value);
+        const comment = document.getElementById('rateComment').value.trim() || null;
+
+        const btn = document.getElementById('rateSubmitBtn');
+        if (btn) btn.disabled = true;
 
         try {
             const res = await fetch(`/api/events/${eventId}/ratings`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
                 body: JSON.stringify({ rating, comment })
             });
 
-            const text = await res.text();
+            const ct = res.headers.get('content-type') || '';
+            const payload = ct.includes('application/json') ? await res.json() : await res.text();
+
             if (!res.ok) {
-                showError('rate', text || 'Rating failed');
+                const msg = (payload && payload.message) ? payload.message : (typeof payload === 'string' ? payload : 'Rating failed');
+                showError('rate', msg);
                 return;
             }
 
             showSuccess('rate', 'Thanks! Your rating was saved.');
-            loadRatingSummary(eventId);
+            await loadRatingSummaryFor(eventId);
         } catch (e) {
-            showError('rate', 'Network error.');
+            showError('rate', 'Network error');
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 
-    function hideAlerts(prefix) {
-        document.getElementById(prefix + 'Error').classList.add('d-none');
-        document.getElementById(prefix + 'Success').classList.add('d-none');
-    }
-
-    function showError(prefix, msg) {
-        const el = document.getElementById(prefix + 'Error');
-        el.textContent = msg;
-        el.classList.remove('d-none');
-    }
-
-    function showSuccess(prefix, msg) {
-        const el = document.getElementById(prefix + 'Success');
-        el.textContent = msg;
-        el.classList.remove('d-none');
-    }
-
-    async function loadRatingSummary(eventId) {
-        const container = document.querySelector(`[data-summary-for="${eventId}"]`);
-        if (!container) return;
+    async function loadRatingSummaryFor(eventId) {
+        const box = document.querySelector(`[data-summary-for="${eventId}"]`);
+        if (!box) return;
+        const avgEl = box.querySelector('[data-avg]');
+        const countEl = box.querySelector('[data-count]');
+        avgEl.textContent = '—';
+        countEl.textContent = '—';
         try {
-            const res = await fetch(`/api/events/${eventId}/ratings/summary`);
+            // Backend endpoint is /api/events/{eventId}/ratings/summary (see EventRatingController)
+            const res = await fetch(`/api/events/${eventId}/ratings/summary`, { credentials: 'same-origin' });
             if (!res.ok) return;
             const data = await res.json();
-            container.querySelector('[data-avg]').textContent = (data.average || 0).toFixed(1);
-            container.querySelector('[data-count]').textContent = (data.count || 0);
-        } catch (e) {
-            // ignore
+            avgEl.textContent = Number(data.average || 0).toFixed(1);
+            countEl.textContent = String(Number(data.count || 0));
+        } catch (_) {
+            // keep dashes
         }
     }
 
-    function toggleComments(btn) {
-        const eventId = btn.getAttribute('data-event-id');
-        const box = document.getElementById('commentsBox-' + eventId);
-        const isHidden = box.classList.contains('d-none');
-        if (isHidden) {
-            box.classList.remove('d-none');
-            btn.textContent = 'Hide';
-            loadComments(eventId);
-        } else {
-            box.classList.add('d-none');
-            btn.textContent = 'Show';
-        }
-    }
-
-    async function loadComments(eventId) {
-        const list = document.getElementById('commentsList-' + eventId);
-        const hint = document.getElementById('commentsHint-' + eventId);
-        list.innerHTML = '';
-        hint.textContent = 'Loading…';
-
-        try {
-            const res = await fetch(`/api/comments/event/${eventId}`);
-            if (!res.ok) {
-                hint.textContent = 'Could not load comments.';
-                return;
-            }
-            const data = await res.json();
-            hint.textContent = data.length ? '' : 'Be the first to comment.';
-            list.appendChild(renderCommentTree(eventId, data));
-        } catch (e) {
-            hint.textContent = 'Network error.';
-        }
-    }
-
-    function renderCommentTree(eventId, comments) {
-        const container = document.createElement('div');
-        container.className = 'd-flex flex-column gap-2';
-        for (const c of comments) {
-            container.appendChild(renderComment(eventId, c, 0));
-        }
-        return container;
-    }
-
-    function renderComment(eventId, c, depth) {
-        const wrap = document.createElement('div');
-        wrap.className = 'border rounded-3 p-2 bg-white';
-        wrap.style.marginLeft = Math.min(depth * 18, 54) + 'px';
-
-        const meta = document.createElement('div');
-        meta.className = 'd-flex justify-content-between align-items-center mb-1';
-        meta.innerHTML = `<div class="small text-muted"><strong>${escapeHtml(c.authorFullName)}</strong> · ${c.createdAt ? new Date(c.createdAt).toLocaleString() : ''}</div>`;
-
-        const body = document.createElement('div');
-        body.className = 'text-dark';
-        body.textContent = c.content;
-
-        const actions = document.createElement('div');
-        actions.className = 'd-flex gap-2 mt-2 flex-wrap';
-
-        const likeBtn = document.createElement('button');
-        likeBtn.className = 'btn btn-sm ' + (c.likedByMe ? 'btn-primary' : 'btn-outline-primary');
-        likeBtn.type = 'button';
-        likeBtn.innerHTML = `<i class="bi bi-hand-thumbs-up"></i> <span>${c.likeCount}</span>`;
-        likeBtn.onclick = () => toggleLike(eventId, c.id);
-
-        const replyBtn = document.createElement('button');
-        replyBtn.className = 'btn btn-sm btn-outline-secondary';
-        replyBtn.type = 'button';
-        replyBtn.innerHTML = `<i class="bi bi-reply"></i> Reply`;
-
-        const replyBox = document.createElement('div');
-        replyBox.className = 'd-none mt-2';
-        replyBox.innerHTML = `
-            <div class="input-group input-group-sm">
-                <input class="form-control" placeholder="Write a reply…" />
-                <button class="btn btn-outline-primary" type="button">Send</button>
-            </div>
-        `;
-
-        replyBtn.onclick = () => {
-            replyBox.classList.toggle('d-none');
-        };
-
-        replyBox.querySelector('button').onclick = () => {
-            const txt = replyBox.querySelector('input').value.trim();
-            if (!txt) return;
-            postReply(eventId, c.id, txt);
-            replyBox.querySelector('input').value = '';
-        };
-
-        actions.appendChild(likeBtn);
-        actions.appendChild(replyBtn);
-
-        wrap.appendChild(meta);
-        wrap.appendChild(body);
-        wrap.appendChild(actions);
-        wrap.appendChild(replyBox);
-
-        if (c.replies && c.replies.length) {
-            const repliesWrap = document.createElement('div');
-            repliesWrap.className = 'mt-2 d-flex flex-column gap-2';
-            for (const r of c.replies) {
-                repliesWrap.appendChild(renderComment(eventId, r, depth + 1));
-            }
-            wrap.appendChild(repliesWrap);
-        }
-
-        return wrap;
-    }
-
-    async function postComment(btn) {
-        const eventId = btn.getAttribute('data-event-id');
-        const input = document.getElementById('commentInput-' + eventId);
-        const content = input.value.trim();
-        if (!content) return;
-
-        try {
-            const res = await fetch(`/api/comments/event/${eventId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content })
-            });
-            if (!res.ok) return;
-            input.value = '';
-            await loadComments(eventId);
-        } catch (e) {
-            // ignore
-        }
-    }
-
-    async function postReply(eventId, parentId, content) {
-        try {
-            const res = await fetch(`/api/comments/event/${eventId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content, parentId })
-            });
-            if (!res.ok) return;
-            await loadComments(eventId);
-        } catch (e) {
-            // ignore
-        }
-    }
-
-    async function toggleLike(eventId, commentId) {
-        try {
-            const res = await fetch(`/api/comments/${commentId}/like`, { method: 'POST' });
-            if (!res.ok) return;
-            await loadComments(eventId);
-        } catch (e) {
-            // ignore
-        }
-    }
-
-    function escapeHtml(str) {
-        return (str || '').replace(/[&<>"']/g, m => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        }[m]));
-    }
-
-    // Load summaries for all visible events
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('[data-summary-for]').forEach(el => {
-            const eventId = el.getAttribute('data-summary-for');
-            loadRatingSummary(eventId);
-        });
-    });
+    // On page load, load rating summaries for visible cards
+    document.querySelectorAll('[data-summary-for]')
+        .forEach(el => loadRatingSummaryFor(el.getAttribute('data-summary-for')));
 </script>
 
 </body>
