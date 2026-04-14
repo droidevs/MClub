@@ -17,6 +17,15 @@ public class CommentDto {
     private long likeCount;
     private boolean likedByMe;
 
+    /** Total number of direct replies (children) for this comment. */
+    private int replyCount;
+
+    /**
+     * When the UI receives a truncated reply preview list, this flag indicates there are more
+     * replies than included in {@link #replies}.
+     */
+    private boolean hasMoreReplies;
+
     private List<CommentDto> replies = new ArrayList<>();
 
     public UUID getId() {
@@ -81,6 +90,22 @@ public class CommentDto {
 
     public void setLikedByMe(boolean likedByMe) {
         this.likedByMe = likedByMe;
+    }
+
+    public int getReplyCount() {
+        return replyCount;
+    }
+
+    public void setReplyCount(int replyCount) {
+        this.replyCount = replyCount;
+    }
+
+    public boolean isHasMoreReplies() {
+        return hasMoreReplies;
+    }
+
+    public void setHasMoreReplies(boolean hasMoreReplies) {
+        this.hasMoreReplies = hasMoreReplies;
     }
 
     public List<CommentDto> getReplies() {

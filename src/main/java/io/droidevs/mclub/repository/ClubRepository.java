@@ -9,6 +9,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ClubRepository extends JpaRepository<Club, UUID> {
-    @Query("select c from Club c where c.id = :id")
+    @Query("select c from Club c left join fetch c.createdBy where c.id = :id")
     Optional<Club> findByIdEager(@Param("id") UUID id);
 }

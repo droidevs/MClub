@@ -1,4 +1,5 @@
 package io.droidevs.mclub.service;
+
 import io.droidevs.mclub.domain.Club;
 import io.droidevs.mclub.domain.User;
 import io.droidevs.mclub.dto.ClubDto;
@@ -10,7 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class ClubService {
@@ -23,10 +27,16 @@ public class ClubService {
         Club c = Club.builder().name(dto.getName()).description(dto.getDescription()).createdBy(user).build();
         return clubMapper.toDto(clubRepository.save(c));
     }
+
     public Page<ClubDto> getAllClubs(Pageable pageable) {
         return clubRepository.findAll(pageable).map(clubMapper::toDto);
     }
+
+    @Transactional(readOnly = true)
     public ClubDto getClub(UUID id) {
-        return clubMapper.toDto(clubRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Club not found")));
+        return clubMapper.toDto(
+                clubRepository.findByIdEager(id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Club not found"))
+        );
     }
 }

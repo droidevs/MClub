@@ -37,6 +37,27 @@
                     </a>
                 </div>
                 <div class="card-body">
+
+                    <!-- Preview existing comments for everyone (admins included) -->
+                    <div th:if="${comments == null or #lists.isEmpty(comments)}" class="text-muted">
+                        <small>No comments yet.</small>
+                    </div>
+
+                    <div th:if="${comments != null and !#lists.isEmpty(comments)}" class="mb-3">
+                        <div class="border rounded p-2 mb-2"
+                             th:each="c, iter : ${comments}"
+                             th:if="${iter.index < 3}">
+                            <div class="d-flex justify-content-between">
+                                <div class="fw-semibold" th:text="${c.authorFullName}">Author</div>
+                                <div class="text-muted small" th:text="${#temporals.format(c.createdAt, 'yyyy-MM-dd HH:mm')}">time</div>
+                            </div>
+                            <div class="mt-1" th:text="${c.content}">Content</div>
+                            <div class="text-muted small mt-1" th:if="${c.replyCount > 0}">
+                                <span th:text="${c.replyCount}">0</span> replies — open “View all”
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mb-2" sec:authorize="hasRole('STUDENT')">
                         <form th:action="@{/events/{id}/comments(id=${event.id})}" method="post">
                             <label class="form-label">Add a comment</label>

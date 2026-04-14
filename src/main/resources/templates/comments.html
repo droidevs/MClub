@@ -53,6 +53,34 @@
 
             <div class="mt-2" th:text="${c.content}">Comment body</div>
 
+            <div class="text-muted small mt-2" th:if="${c.replyCount > 0}">
+                <span th:text="${c.replyCount}">0</span> replies
+            </div>
+
+            <!-- Reply preview: top 1 reply is included by the controller/service -->
+            <div class="mt-3" th:if="${c.replies != null and !#lists.isEmpty(c.replies)}">
+                <div class="border-start ps-3">
+                    <div th:each="r : ${c.replies}" class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <div class="fw-semibold small" th:text="${#strings.isEmpty(r.authorFullName) ? 'Unknown' : r.authorFullName}">User</div>
+                            <div class="text-muted small" th:text="${r.createdAt != null ? #temporals.format(r.createdAt, 'dd MMM yyyy HH:mm') : ''}"></div>
+                        </div>
+                        <div class="small mt-1" th:text="${r.content}">Reply body</div>
+                    </div>
+
+                    <!-- Fetch-and-expand replies -->
+                    <button type="button"
+                            class="btn btn-link btn-sm p-0 text-decoration-none"
+                            th:if="${c.hasMoreReplies}"
+                            th:attr="data-toggle-replies=${c.id}">
+                        See more replies
+                    </button>
+
+                    <!-- This container will be populated by JS after fetching from /api/comments/{id}/replies -->
+                    <div class="mt-2 d-none" th:attr="data-replies-container=${c.id}"></div>
+                </div>
+            </div>
+
             <div class="mt-3" sec:authorize="hasRole('STUDENT')">
                 <details>
                     <summary class="small text-muted" style="cursor:pointer;">Reply</summary>
@@ -68,11 +96,9 @@
             </div>
         </div>
 
-        <div th:if="${c != null and c.replies != null and !#lists.isEmpty(c.replies)}">
-            <div th:each="r : ${c.replies}">
-                <div th:replace="~{this :: commentNode(c=${r}, level=${(level == null ? 0 : level) + 1})}"></div>
-            </div>
-        </div>
+        <!-- IMPORTANT: for this page we intentionally do NOT recursively render deeper replies here.
+             The controller returns only a preview (top 1 reply) and we keep the UI predictable.
+             Full threads can be implemented later with server-side fetching. -->
     </div>
 
     <div class="card border-0 shadow-sm rounded-4">
@@ -86,6 +112,82 @@
             </div>
         </div>
     </div>
+
+    <script>
+        const escapeHtml = (unsafe) => {
+            if (unsafe === null || unsafe === undefined) return '';
+            return String(unsafe)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        };
+
+        const formatDateTime = (iso) => {
+            if (!iso) return '';
+            // Backend uses LocalDateTime -> Jackson typically serializes like "2026-04-14T12:34:56"
+            // Keep it simple: show the raw value or a trimmed version.
+            return iso.replace('T', ' ');
+        };
+
+        const renderReply = (r) => {
+            const author = r.authorFullName && r.authorFullName.trim() ? r.authorFullName : 'Unknown';
+            return `
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between">
+                        <div class="fw-semibold small">${escapeHtml(author)}</div>
+                        <div class="text-muted small">${escapeHtml(formatDateTime(r.createdAt))}</div>
+                    </div>
+                    <div class="small mt-1">${escapeHtml(r.content)}</div>
+                </div>
+            `;
+        };
+
+        // Expand/collapse replies for a comment.
+        // First click fetches from backend and populates the container.
+        document.addEventListener('click', async function (e) {
+            const btn = e.target.closest('[data-toggle-replies]');
+            if (!btn) return;
+
+            const id = btn.getAttribute('data-toggle-replies');
+            const container = document.querySelector('[data-replies-container="' + id + '"]');
+            if (!container) return;
+
+            const isHidden = container.classList.contains('d-none');
+
+            // If we're opening and we haven't loaded yet, fetch.
+            if (isHidden && !container.dataset.loaded) {
+                btn.textContent = 'Loading…';
+                btn.disabled = true;
+
+                try {
+                    const resp = await fetch('/api/comments/' + id + '/replies', {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (!resp.ok) {
+                        throw new Error('HTTP ' + resp.status);
+                    }
+
+                    const replies = await resp.json();
+                    if (!Array.isArray(replies) || replies.length === 0) {
+                        container.innerHTML = '<div class="text-muted small">No replies found.</div>';
+                    } else {
+                        container.innerHTML = replies.map(renderReply).join('');
+                    }
+
+                    container.dataset.loaded = 'true';
+                } catch (err) {
+                    container.innerHTML = '<div class="text-danger small">Could not load replies.</div>';
+                } finally {
+                    btn.disabled = false;
+                }
+            }
+
+            container.classList.toggle('d-none');
+            btn.textContent = container.classList.contains('d-none') ? 'See more replies' : 'Hide replies';
+        });
+    </script>
 </div>
 
 </body>

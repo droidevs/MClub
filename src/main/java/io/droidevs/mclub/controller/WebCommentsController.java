@@ -48,7 +48,7 @@ public class WebCommentsController {
 
         model.addAttribute("targetType", type.name());
         model.addAttribute("targetId", targetId);
-        model.addAttribute("comments", commentService.getThread(type, targetId, auth != null ? auth.getName() : null));
+        model.addAttribute("comments", commentService.getThreadWithReplyPreview(type, targetId, auth != null ? auth.getName() : null, 1));
         model.addAttribute("form", new CommentCreateRequest());
         return "comments";
     }
@@ -90,4 +90,3 @@ public class WebCommentsController {
         return "redirect:/comments/" + type.name() + "/" + targetId;
     }
 }
-

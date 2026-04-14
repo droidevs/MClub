@@ -6,6 +6,8 @@ import io.droidevs.mclub.domain.User;
 import io.droidevs.mclub.dto.ActivityCreateRequest;
 import io.droidevs.mclub.dto.EventCreateRequest;
 import io.droidevs.mclub.dto.AttendanceRecordDto;
+import io.droidevs.mclub.domain.CommentTargetType;
+import io.droidevs.mclub.service.CommentService;
 import io.droidevs.mclub.repository.ClubRepository;
 import io.droidevs.mclub.repository.MembershipRepository;
 import io.droidevs.mclub.service.CurrentUserService;
@@ -42,6 +44,7 @@ public class WebController {
     private final CurrentUserService currentUserService;
     private final EventRatingService eventRatingService;
     private final ActivityService activityService;
+    private final CommentService commentService;
 
     @GetMapping("/")
     public String dashboard(Model model, Authentication auth) {
@@ -130,6 +133,16 @@ public class WebController {
             ratingAverage = summary.getAverage();
             ratingCount = summary.getCount();
         } catch (Exception ignored) {
+        }
+
+        // Load comment preview for display (posting is still restricted to STUDENT elsewhere)
+        try {
+            String email = (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal()))
+                    ? auth.getName()
+                    : null;
+            model.addAttribute("comments", commentService.getRootPreview(CommentTargetType.EVENT, id, email, 3));
+        } catch (Exception ignored) {
+            model.addAttribute("comments", Collections.emptyList());
         }
 
         model.addAttribute("event", event);

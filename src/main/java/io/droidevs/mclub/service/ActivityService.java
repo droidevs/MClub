@@ -13,6 +13,7 @@ import io.droidevs.mclub.repository.EventRepository;
 import io.droidevs.mclub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -62,12 +63,15 @@ public class ActivityService {
         return activityMapper.toDto(activityRepository.save(a));
     }
 
+    @Transactional(readOnly = true)
     public List<ActivityDto> getByClub(UUID clubId) {
         return activityRepository.findByClubId(clubId).stream().map(activityMapper::toDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ActivityDto> getRecentByClub(UUID clubId) {
-        return activityRepository.findTop5ByClubIdOrderByDateDesc(clubId).stream()
+        return activityRepository.findRecentByClubIdWithClubEventAndCreatedBy(clubId).stream()
+                .limit(5)
                 .map(activityMapper::toDto)
                 .collect(Collectors.toList());
     }

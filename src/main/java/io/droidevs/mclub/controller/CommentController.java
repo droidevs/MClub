@@ -30,6 +30,13 @@ public class CommentController {
         return ResponseEntity.ok(commentService.getThread(type, targetId, email));
     }
 
+    /** Fetch all direct replies for a comment (children only). */
+    @GetMapping("/{commentId}/replies")
+    public ResponseEntity<List<CommentDto>> getReplies(@PathVariable UUID commentId, Authentication auth) {
+        String email = auth != null ? auth.getName() : null;
+        return ResponseEntity.ok(commentService.getDirectReplies(commentId, email));
+    }
+
     @PostMapping("/{targetType}/{targetId}")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<CommentDto> addComment(@PathVariable String targetType,
@@ -47,4 +54,3 @@ public class CommentController {
         return ResponseEntity.ok().build();
     }
 }
-

@@ -6,13 +6,14 @@ import io.droidevs.mclub.exception.ResourceNotFoundException;
 import io.droidevs.mclub.mapper.*;
 import io.droidevs.mclub.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import org.springframework.data.domain.Page;
 
 @Service
 @RequiredArgsConstructor
@@ -61,23 +62,30 @@ public class EventService {
         return eventMapper.toDto(eventRepository.save(event));
     }
 
+    @Transactional(readOnly = true)
     public List<EventDto> getEventsByClub(UUID clubId) {
         return eventRepository.findByClubId(clubId).stream().map(eventMapper::toDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EventDto> getRecentEventsByClub(UUID clubId) {
-        return eventRepository.findTop5ByClubIdOrderByStartDateDesc(clubId).stream()
+        // Fetch joins (club + createdBy) to avoid LazyInitializationException during mapping
+        return eventRepository.findRecentByClubIdWithClubAndCreatedBy(clubId).stream()
+                .limit(5)
                 .map(eventMapper::toDto)
                 .collect(Collectors.toList());
     }
 
-    public Page<EventDto> getAllEvents(org.springframework.data.domain.Pageable pageable) {
+    @Transactional(readOnly = true)
+    public Page<EventDto> getAllEvents(Pageable pageable) {
         return eventRepository.findAll(pageable).map(eventMapper::toDto);
     }
 
+    @Transactional(readOnly = true)
     public Event getEvent(UUID id) {
         return eventRepository.findByIdWithClub(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+                .orElseGet(() -> eventRepository.findById(id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Event not found")));
     }
 
     public void requireCanManageEvent(String email, UUID eventId) {

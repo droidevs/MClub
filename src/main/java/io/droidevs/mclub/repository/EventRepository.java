@@ -16,4 +16,8 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
 
     @Query("select e from Event e join fetch e.club where e.id = :id")
     Optional<Event> findByIdWithClub(@Param("id") UUID id);
+
+    // For Thymeleaf snapshots (club detail) to avoid LazyInitializationException during mapping
+    @Query("select e from Event e join fetch e.club left join fetch e.createdBy where e.club.id = :clubId order by e.startDate desc")
+    List<Event> findRecentByClubIdWithClubAndCreatedBy(@Param("clubId") UUID clubId);
 }
