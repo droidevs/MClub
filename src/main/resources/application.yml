@@ -50,6 +50,12 @@ mclub:
       timeout-ms: 15000
 
   whatsapp:
+    linking:
+      rate-limit:
+        redis-enabled: false
+      attempts:
+        redis-enabled: false
+
     meta:
       enabled: false
       base-url: https://graph.facebook.com
