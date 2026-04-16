@@ -22,7 +22,11 @@ public class LikeCommentTool implements Tool {
 
     @Override
     public ToolResult execute(ToolCall call, ConversationContext ctx) {
-        String email = ctx.userEmail().orElseThrow(() -> new IllegalStateException("User not linked"));
+        String email = ctx.userEmail().orElse(null);
+        if (email == null) {
+            return ToolResult.of("To like comments, please link your account first (OTP linking). Ask me: 'link my account'.");
+        }
+
 
         Object commentIdRaw = call.arguments().get("commentId");
         if (commentIdRaw == null) {

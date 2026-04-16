@@ -1,5 +1,5 @@
 package io.droidevs.mclub.ai.web.dto;
 
-/** Minimal response for async processing. */
-public record ChatMessageResponse(String status) {}
+/** Synchronous response for platform chat widget / mobile clients. */
+public record ChatMessageResponse(String assistantMessage) {}
 

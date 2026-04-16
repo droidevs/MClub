@@ -24,7 +24,11 @@ public class AddCommentTool implements Tool {
 
     @Override
     public ToolResult execute(ToolCall call, ConversationContext ctx) {
-        String email = ctx.userEmail().orElseThrow(() -> new IllegalStateException("User not linked"));
+        String email = ctx.userEmail().orElse(null);
+        if (email == null) {
+            return ToolResult.of("To post comments, please link your account first (OTP linking). Ask me: 'link my account'.");
+        }
+
 
         Object targetTypeRaw = call.arguments().get("targetType");
         Object targetIdRaw = call.arguments().get("targetId");

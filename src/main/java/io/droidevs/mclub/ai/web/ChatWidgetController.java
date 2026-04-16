@@ -1,6 +1,5 @@
 package io.droidevs.mclub.ai.web;
 
-import io.droidevs.mclub.ai.conversation.ConversationService;
 import io.droidevs.mclub.ai.web.dto.ChatMessageRequest;
 import io.droidevs.mclub.ai.web.dto.ChatMessageResponse;
 import jakarta.validation.Valid;
@@ -17,14 +16,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/chat")
 public class ChatWidgetController {
 
-    private final ConversationService conversationService;
+    private final PlatformChatService platformChatService;
 
     @PostMapping("/message")
     public ChatMessageResponse send(@RequestBody @Valid ChatMessageRequest req) {
-        // For the platform widget, the channel is "web".
-        // conversationId must be stable per user/session on the client.
-        conversationService.handleIncomingMessage(req.conversationId(), req.from(), req.text());
-        return new ChatMessageResponse("accepted");
+        var r = platformChatService.chat(req.conversationId(), req.from(), req.text());
+        return new ChatMessageResponse(r.message());
     }
 }
 

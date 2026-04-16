@@ -23,7 +23,11 @@ public class ReplyToCommentTool implements Tool {
 
     @Override
     public ToolResult execute(ToolCall call, ConversationContext ctx) {
-        String email = ctx.userEmail().orElseThrow(() -> new IllegalStateException("User not linked"));
+        String email = ctx.userEmail().orElse(null);
+        if (email == null) {
+            return ToolResult.of("To reply to comments, please link your account first (OTP linking). Ask me: 'link my account'.");
+        }
+
 
         Object parentIdRaw = call.arguments().get("commentId");
         Object textRaw = call.arguments().get("text");
