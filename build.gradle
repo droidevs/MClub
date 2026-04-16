@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.5'
+    id 'org.springframework.boot' version '3.3.5'
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -51,7 +51,7 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.0.Beta1'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
+    testImplementation ("org.springframework.modulith:spring-modulith-starter-test")
     testRuntimeOnly 'com.h2database:h2'
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -64,6 +64,9 @@ dependencyManagement {
     }
 }
 
-tasks.named('test') {
+test {
     useJUnitPlatform()
 }
+//tasks.named('test') {
+   // useJUnitPlatform()
+//}
