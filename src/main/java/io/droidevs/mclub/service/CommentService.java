@@ -4,6 +4,7 @@ import io.droidevs.mclub.domain.*;
 import io.droidevs.mclub.dto.CommentCreateRequest;
 import io.droidevs.mclub.dto.CommentDto;
 import io.droidevs.mclub.exception.ForbiddenException;
+import io.droidevs.mclub.mapper.CommentMapper;
 import io.droidevs.mclub.repository.*;
 import io.droidevs.mclub.security.Role;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,8 @@ public class CommentService {
     private final EventRepository eventRepository;
     private final ActivityRepository activityRepository;
 
+    private final CommentMapper commentMapper;
+
     @Transactional(readOnly = true)
     public List<CommentDto> getThread(CommentTargetType targetType, UUID targetId, String currentUserEmail) {
         User me = currentUserEmail != null ? userRepository.findByEmail(currentUserEmail).orElse(null) : null;
@@ -35,17 +38,18 @@ public class CommentService {
         // Precompute like counts + likedByMe (simple approach via per-comment lookups; OK for small sizes).
         // If you need scale, we can replace with aggregate queries.
         Map<UUID, Long> likeCounts = new HashMap<>();
-        Set<UUID> likedByMe = new HashSet<>();
+        Set<UUID> likedIdsByMe = new HashSet<>();
 
         for (Comment c : all) {
             likeCounts.put(c.getId(), commentLikeRepository.countByCommentId(c.getId()));
             if (myId != null && commentLikeRepository.findByCommentIdAndUserId(c.getId(), myId).isPresent()) {
-                likedByMe.add(c.getId());
+                likedIdsByMe.add(c.getId());
             }
         }
 
         Map<UUID, CommentDto> dtoById = all.stream()
-                .collect(Collectors.toMap(Comment::getId, c -> toDto(c, likeCounts.getOrDefault(c.getId(), 0L), likedByMe.contains(c.getId()))));
+                .collect(Collectors.toMap(Comment::getId,
+                        c -> commentMapper.toDto(c, likeCounts.getOrDefault(c.getId(), 0L), likedIdsByMe.contains(c.getId()))));
 
         // Root list
         List<CommentDto> roots = new ArrayList<>();
@@ -56,6 +60,7 @@ public class CommentService {
             } else {
                 CommentDto parent = dtoById.get(c.getParentId());
                 if (parent != null) {
+                    // replies list is initialized by mapper
                     parent.getReplies().add(dto);
                 } else {
                     // Orphan reply: treat as root
@@ -137,16 +142,16 @@ public class CommentService {
         List<Comment> replies = commentRepository.findRepliesWithAuthor(parentCommentId);
 
         Map<UUID, Long> likeCounts = new HashMap<>();
-        Set<UUID> likedByMe = new HashSet<>();
+        Set<UUID> likedIdsByMe = new HashSet<>();
         for (Comment c : replies) {
             likeCounts.put(c.getId(), commentLikeRepository.countByCommentId(c.getId()));
             if (myId != null && commentLikeRepository.findByCommentIdAndUserId(c.getId(), myId).isPresent()) {
-                likedByMe.add(c.getId());
+                likedIdsByMe.add(c.getId());
             }
         }
 
         List<CommentDto> out = replies.stream()
-                .map(c -> toDto(c, likeCounts.getOrDefault(c.getId(), 0L), likedByMe.contains(c.getId())))
+                .map(c -> commentMapper.toDto(c, likeCounts.getOrDefault(c.getId(), 0L), likedIdsByMe.contains(c.getId())))
                 .collect(Collectors.toList());
 
         // Ensure child-of-reply lists are empty for this endpoint to keep UI bounded.
@@ -204,7 +209,7 @@ public class CommentService {
                 .deleted(false)
                 .build());
 
-        return toDto(saved, 0L, false);
+        return commentMapper.toDto(saved, 0L, false);
     }
 
     @Transactional
@@ -233,23 +238,5 @@ public class CommentService {
         req.setParentId(parent.getId());
 
         return addComment(parent.getTargetType(), parent.getTargetId(), req, studentEmail);
-    }
-
-    private CommentDto toDto(Comment c, long likeCount, boolean likedByMe) {
-        CommentDto dto = new CommentDto();
-        dto.setId(c.getId());
-        dto.setParentId(c.getParentId());
-        dto.setAuthorId(c.getAuthor() != null ? c.getAuthor().getId() : null);
-        dto.setAuthorFullName(c.getAuthor() != null ? c.getAuthor().getFullName() : "");
-        dto.setCreatedAt(c.getCreatedAt());
-        dto.setLikeCount(likeCount);
-        dto.setLikedByMe(likedByMe);
-
-        if (c.isDeleted()) {
-            dto.setContent("[deleted]");
-        } else {
-            dto.setContent(c.getContent());
-        }
-        return dto;
     }
 }
