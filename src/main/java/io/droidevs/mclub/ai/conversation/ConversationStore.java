@@ -6,9 +6,5 @@ public interface ConversationStore {
     ConversationSession appendUserMessage(ConversationSession session, String text);
 
     ConversationSession appendAssistantMessage(ConversationSession session, String text);
-
-    ConversationSession setPendingIntent(ConversationSession session, PendingIntent intent);
-
-    ConversationSession clearPendingIntent(ConversationSession session);
 }
 
