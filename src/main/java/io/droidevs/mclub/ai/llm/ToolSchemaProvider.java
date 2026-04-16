@@ -42,6 +42,42 @@ public class ToolSchemaProvider {
                                 "targetId", Map.of("type", "string", "description", "UUID of event/activity"),
                                 "text", Map.of("type", "string")
                         ), List.of("targetType", "targetId", "text")));
+                case "list_events" -> tool("list_events",
+                        "List events (read-only).",
+                        objectSchema(Map.of(
+                                "limit", Map.of("type", "integer", "minimum", 1, "maximum", 25, "description", "Max items")
+                        ), List.of()));
+                case "list_clubs" -> tool("list_clubs",
+                        "List clubs (read-only).",
+                        objectSchema(Map.of(
+                                "limit", Map.of("type", "integer", "minimum", 1, "maximum", 25, "description", "Max items")
+                        ), List.of()));
+                case "list_my_clubs" -> tool("list_my_clubs",
+                        "List clubs for the linked user (read-only).",
+                        objectSchema(Map.of(), List.of()));
+                case "search_semantic" -> tool("search_semantic",
+                        "Semantic (vector) search across indexed entities. Use this to find IDs before calling action tools.",
+                        objectSchema(Map.of(
+                                "query", Map.of("type", "string", "description", "Natural language search query"),
+                                "limit", Map.of("type", "integer", "minimum", 1, "maximum", 10)
+                        ), List.of("query")));
+                case "search_events" -> tool("search_events",
+                        "Semantic search restricted to events. Use it to find an eventId.",
+                        objectSchema(Map.of(
+                                "query", Map.of("type", "string"),
+                                "limit", Map.of("type", "integer", "minimum", 1, "maximum", 10)
+                        ), List.of("query")));
+                case "search_clubs" -> tool("search_clubs",
+                        "Semantic search restricted to clubs. Use it to find a clubId.",
+                        objectSchema(Map.of(
+                                "query", Map.of("type", "string"),
+                                "limit", Map.of("type", "integer", "minimum", 1, "maximum", 10)
+                        ), List.of("query")));
+                case "get_event_details" -> tool("get_event_details",
+                        "Fetch event details by eventId (read-only).",
+                        objectSchema(Map.of(
+                                "eventId", Map.of("type", "string", "description", "UUID of the event")
+                        ), List.of("eventId")));
                 default -> tool(t.name(), "Tool: " + t.name(), objectSchema(Map.of(), List.of()));
             });
         }

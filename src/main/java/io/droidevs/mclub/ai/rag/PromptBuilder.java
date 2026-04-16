@@ -1,7 +1,6 @@
 package io.droidevs.mclub.ai.rag;
 
 import io.droidevs.mclub.ai.conversation.ConversationContext;
-import io.droidevs.mclub.ai.conversation.ConversationMessage;
 import io.droidevs.mclub.ai.conversation.ConversationSession;
 import org.springframework.stereotype.Component;
 
@@ -13,31 +12,49 @@ public class PromptBuilder {
 
     public String buildPrompt(ConversationSession session, ConversationContext ctx, RetrievalContext retrieved) {
         int total = session.messages().size();
-        int skip = Math.max(0, total - 10);
+        int skip = Math.max(0, total - 30);
         String history = session.messages().stream()
                 .skip(skip)
-                .limit(10)
+                .limit(30)
                 .map(m -> m.role() + ": " + m.content())
                 .collect(Collectors.joining("\n"));
 
-        String snippets = String.join("\n---\n", retrieved.factualSnippets());
+        String facts = String.join("\n---\n", retrieved.factualSnippets());
+        String recentEvents = retrieved.recentEvents().isEmpty()
+                ? "(none)"
+                : String.join("\n", retrieved.recentEvents());
+        String semanticHits = retrieved.semanticHits().isEmpty()
+                ? "(none)"
+                : String.join("\n", retrieved.semanticHits());
 
         return """
-                You are MClub Assistant. Be concise and factual.
+                You are MClub Assistant.
 
-                Rules:
-                - If you are not sure, ask a clarification question.
-                - Do not claim to have performed an action unless a tool call was executed.
+                Style:
+                - Be friendly, natural, and helpful.
+                - Keep responses short, but ask a follow-up question when needed.
+
+                Tool / safety rules:
+                - NEVER guess UUIDs or database IDs.
+                - If an action needs an id (eventId/clubId/targetId) and it is not explicitly present in retrieved context, call a READ tool first (search_semantic, list_events, list_clubs, list_my_clubs) to obtain IDs.
+                - If multiple candidates exist, ask the user to choose (numbered list).
+                - Do not claim you performed an action unless a tool call was executed.
                 - If user is not linked, do not perform actions. Explain linking.
 
                 User linked: %s
 
-                Retrieved context:
+                Retrieved facts:
+                %s
+
+                Recent events snapshot:
+                %s
+
+                Semantic hits (vector search):
                 %s
 
                 Conversation:
                 %s
-                """.formatted(ctx.linked(), snippets, history);
+                """.formatted(ctx.linked(), facts, recentEvents, semanticHits, history);
     }
 }
 

@@ -47,7 +47,7 @@ public class OpenAiLlmClient implements LlmClient {
         body.put("tools", toolSchemaProvider.buildToolSchemas(tools));
         body.put("tool_choice", "auto");
         body.put("messages", List.of(
-                Map.of("role", "system", "content", "You are MClub Assistant. Use tools when you need to perform actions."),
+                Map.of("role", "system", "content", "You are MClub Assistant. ALWAYS search first to obtain IDs before executing any action tool. If an action needs an id and it is not known, call search_events/search_clubs/search_semantic (or list tools) and ask the user to pick if multiple matches."),
                 Map.of("role", "user", "content", prompt)
         ));
 

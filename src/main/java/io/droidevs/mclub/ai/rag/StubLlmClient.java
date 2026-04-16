@@ -1,6 +1,5 @@
 package io.droidevs.mclub.ai.rag;
 
-import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -12,7 +11,6 @@ import java.util.Map;
  * <p>Recognizes very small command-like phrases to trigger tools.
  * Everything else returns a generic answer explaining available commands.
  */
-@Component
 public class StubLlmClient implements LlmClient {
 
     @Override

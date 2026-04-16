@@ -49,6 +49,12 @@ mclub:
       model: gpt-4o-mini
       timeout-ms: 15000
 
+    vector:
+      backfill-enabled: false
+      backfill:
+        initial-delay-ms: 30000
+        fixed-delay-ms: 3600000
+
   whatsapp:
     linking:
       rate-limit:

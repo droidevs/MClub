@@ -18,7 +18,8 @@ public class InMemoryConversationStore implements ConversationStore {
                 id,
                 fromPhoneE164,
                 new ArrayList<>(),
-                Instant.now()
+                Instant.now(),
+                null
         ));
     }
 
@@ -32,6 +33,33 @@ public class InMemoryConversationStore implements ConversationStore {
     public ConversationSession appendAssistantMessage(ConversationSession session, String text) {
         session.messages().add(new ConversationMessage(ConversationMessage.Role.ASSISTANT, text, Instant.now()));
         return session;
+    }
+
+    @Override
+    public ConversationSession setPendingIntent(ConversationSession session, PendingIntent intent) {
+        ConversationSession updated = new ConversationSession(
+                session.conversationId(),
+                session.fromPhoneE164(),
+                session.messages(),
+                session.createdAt(),
+                intent
+        );
+        sessions.put(session.conversationId(), updated);
+        return updated;
+    }
+
+    @Override
+    public ConversationSession clearPendingIntent(ConversationSession session) {
+        if (session.pendingIntent() == null) return session;
+        ConversationSession updated = new ConversationSession(
+                session.conversationId(),
+                session.fromPhoneE164(),
+                session.messages(),
+                session.createdAt(),
+                null
+        );
+        sessions.put(session.conversationId(), updated);
+        return updated;
     }
 }
 

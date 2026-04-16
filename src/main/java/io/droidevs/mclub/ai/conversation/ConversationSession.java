@@ -7,6 +7,7 @@ public record ConversationSession(
         String conversationId,
         String fromPhoneE164,
         List<ConversationMessage> messages,
-        Instant createdAt
+        Instant createdAt,
+        PendingIntent pendingIntent
 ) {}
 

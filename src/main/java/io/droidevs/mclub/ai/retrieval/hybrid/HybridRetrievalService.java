@@ -32,26 +32,27 @@ public class HybridRetrievalService implements RetrievalService {
         RetrievalContext base = structured.retrieve(ctx, userMessage);
 
         List<String> factual = new ArrayList<>(base.factualSnippets());
-        List<String> relevant = new ArrayList<>(base.recentEvents());
+        List<String> recentEvents = new ArrayList<>(base.recentEvents());
+        List<String> semanticHits = new ArrayList<>(base.semanticHits());
 
         VectorRetrievalService vector = vectorRetrievalServiceProvider.getIfAvailable();
         if (vector == null) {
             factual.add("RetrievalMode: hybrid(structured-only)");
-            return new RetrievalContext(factual, relevant);
+            return new RetrievalContext(factual, recentEvents, semanticHits);
         }
 
         try {
             List<VectorSearchResult> hits = vector.retrieveSimilar(ctx, userMessage, 5);
             factual.add("RetrievalMode: hybrid(structured+vector)");
             for (VectorSearchResult hit : hits) {
-                relevant.add("[vector score=" + hit.score() + "] " + hit.docType() + " sourceId=" + hit.sourceId() + " :: " + hit.content());
+                semanticHits.add("[vector score=" + hit.score() + "] " + hit.docType() + " sourceId=" + hit.sourceId() + " :: " + hit.content());
             }
         } catch (Exception e) {
             // Safe fallback (do not break chat) if vector is temporarily unavailable.
             factual.add("RetrievalMode: hybrid(structured-only, vectorError=" + e.getClass().getSimpleName() + ")");
         }
 
-        return new RetrievalContext(factual, relevant);
+        return new RetrievalContext(factual, recentEvents, semanticHits);
     }
 }
 

@@ -39,7 +39,8 @@ public class StructuredRetrievalService implements RetrievalService {
         facts.add("System: MClub (clubs, events, registration, attendance check-in, ratings, comments)");
         facts.add("User message: \"" + userMessage + "\"");
 
-        return new RetrievalContext(facts, eventLines);
+        return RetrievalContext.of(facts, eventLines);
+
     }
 
     private String safe(String v) {
