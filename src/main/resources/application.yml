@@ -49,6 +49,20 @@ mclub:
       model: gpt-4o-mini
       timeout-ms: 15000
 
+  whatsapp:
+    meta:
+      enabled: false
+      base-url: https://graph.facebook.com
+      api-version: v20.0
+      phone-number-id: ${META_WA_PHONE_NUMBER_ID:}
+      access-token: ${META_WA_ACCESS_TOKEN:}
+      verify-token: ${META_WA_VERIFY_TOKEN:}
+      app-secret: ${META_WA_APP_SECRET:}
+      signature-verification:
+        enabled: true
+      otp-template-name: mclub_link_otp
+      template-language: en_US
+
 app:
   jwt:
     secret: 9A4D3E5B1C7F8E2D6A0B9C4F5A6D7E8F1C3B2A4D5E6F7G8H9A0B1C2D3E4F5A6

@@ -1,0 +1,75 @@
+package io.droidevs.mclub.ai.link;
+
+import io.droidevs.mclub.ai.link.repository.UserWhatsAppLinkRepository;
+import io.droidevs.mclub.ai.link.repository.WhatsAppLinkOtpRepository;
+import io.droidevs.mclub.ai.webhook.whatsapp.WhatsAppSender;
+import io.droidevs.mclub.service.CurrentUserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class WhatsAppLinkService {
+
+    private final PhoneNormalizer phoneNormalizer;
+    private final OtpService otpService;
+    private final WhatsAppLinkOtpRepository otpRepo;
+    private final UserWhatsAppLinkRepository linkRepo;
+    private final CurrentUserService currentUserService;
+    private final WhatsAppSender whatsAppSender;
+
+    /** Start linking: create OTP for the given phone number. */
+    public StartLinkResponse startLink(String rawPhoneE164) {
+        String phone = phoneNormalizer.normalizeE164(rawPhoneE164);
+        String code = otpService.generateCode();
+        Instant expiresAt = otpService.expiresAt(Duration.ofMinutes(10));
+        otpRepo.upsertChallenge(phone, otpService.hash(phone, code), expiresAt);
+
+        // Deliver OTP via WhatsApp (Meta Cloud in prod, logging sender in dev).
+        whatsAppSender.sendText(phone, "Your MClub linking code is: " + code + ". It expires in 10 minutes.");
+
+        return new StartLinkResponse(phone, expiresAt, code);
+    }
+
+    /** Confirm linking for the authenticated user. */
+    public void confirmLink(Authentication auth, String rawPhoneE164, String code) {
+        String phone = phoneNormalizer.normalizeE164(rawPhoneE164);
+        var challenge = otpRepo.findActiveByPhone(phone)
+                .orElseThrow(() -> new IllegalArgumentException("No active OTP challenge"));
+
+        if (challenge.consumedAt() != null) {
+            throw new IllegalArgumentException("OTP already consumed");
+        }
+        if (Instant.now().isAfter(challenge.expiresAt())) {
+            throw new IllegalArgumentException("OTP expired");
+        }
+        if (!otpService.matches(challenge.codeHash(), phone, code)) {
+            throw new IllegalArgumentException("Invalid OTP");
+        }
+
+        UUID userId = currentUserService.requireUser(auth).getId();
+        linkRepo.upsert(userId, phone, Instant.now());
+        otpRepo.markConsumed(challenge.id());
+    }
+
+    public Optional<UUID> findUserIdByPhone(String rawPhoneE164) {
+        try {
+            String phone = phoneNormalizer.normalizeE164(rawPhoneE164);
+            return linkRepo.findByPhone(phone).map(UserWhatsAppLinkRepository.LinkRow::userId);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    public record StartLinkResponse(String phoneE164, Instant expiresAt, String otpCode) {}
+}
+
+
+
+
