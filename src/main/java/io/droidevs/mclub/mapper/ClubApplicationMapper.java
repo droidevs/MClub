@@ -5,7 +5,7 @@ import io.droidevs.mclub.dto.ClubApplicationDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", config = CentralMapperConfig.class)
 public interface ClubApplicationMapper {
     @Mapping(target = "submittedById", source = "submittedBy.id")
     @Mapping(target = "submittedByName", source = "submittedBy.fullName")
