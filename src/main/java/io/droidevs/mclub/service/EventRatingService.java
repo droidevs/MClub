@@ -32,6 +32,7 @@ public class EventRatingService {
     private final UserRepository userRepository;
     private final AttendanceService attendanceService;
     private final EventRatingMapper eventRatingMapper;
+    private final io.droidevs.mclub.mapper.EventRatingFactoryMapper eventRatingFactoryMapper;
 
     @Transactional
     public EventRatingDto rateEvent(UUID eventId, EventRatingRequest request, String email) {
@@ -58,7 +59,12 @@ public class EventRatingService {
 
         // Upsert: keep only the last rating per (event, student)
         EventRating rating = eventRatingRepository.findByEventIdAndStudentId(eventId, student.getId())
-                .orElseGet(() -> EventRating.builder().event(event).student(student).build());
+                .orElseGet(() -> {
+                    EventRating r = eventRatingFactoryMapper.create();
+                    r.setEvent(event);
+                    r.setStudent(student);
+                    return r;
+                });
 
         rating.setRating(request.getRating());
         rating.setComment(request.getComment());

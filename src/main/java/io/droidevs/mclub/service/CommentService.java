@@ -26,6 +26,8 @@ public class CommentService {
     private final ActivityRepository activityRepository;
 
     private final CommentMapper commentMapper;
+    private final io.droidevs.mclub.mapper.CommentFactoryMapper commentFactoryMapper;
+    private final io.droidevs.mclub.mapper.CommentLikeFactoryMapper commentLikeFactoryMapper;
 
     @Transactional(readOnly = true)
     public List<CommentDto> getThread(CommentTargetType targetType, UUID targetId, String currentUserEmail) {
@@ -200,15 +202,11 @@ public class CommentService {
             }
         }
 
-        Comment saved = commentRepository.save(Comment.builder()
-                .targetType(targetType)
-                .targetId(targetId)
-                .parentId(parentId)
-                .author(student)
-                .content(request.getContent().trim())
-                .deleted(false)
-                .build());
+        Comment comment = commentFactoryMapper.create(targetType, targetId, parentId, request.getContent().trim());
+        comment.setAuthor(student);
+        comment.setDeleted(false);
 
+        Comment saved = commentRepository.save(comment);
         return commentMapper.toDto(saved, 0L, false);
     }
 
@@ -225,7 +223,7 @@ public class CommentService {
         if (existing.isPresent()) {
             commentLikeRepository.delete(existing.get());
         } else {
-            commentLikeRepository.save(CommentLike.builder().comment(comment).user(student).build());
+            commentLikeRepository.save(commentLikeFactoryMapper.create(comment, student));
         }
     }
 
