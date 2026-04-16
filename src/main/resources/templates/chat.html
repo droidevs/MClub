@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>MClub AI Chat</title>
+    <style>
+        :root { --bg: #0b1020; --panel: #111a33; --border: rgba(255,255,255,.10); --text:#eaf0ff; --muted:#b7c3e7; --accent:#7aa2ff; }
+        body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: radial-gradient(1000px 600px at 20% 0%, #1a2550, var(--bg)); color: var(--text); }
+        .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px; }
+        .top { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 16px; }
+        .title { font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+        .hint { color: var(--muted); font-size: 13px; }
+        .panel { background: rgba(17,26,51,.85); border: 1px solid var(--border); border-radius: 14px; overflow:hidden; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+        .messages { height: calc(100vh - 240px); min-height: 360px; padding: 14px; overflow:auto; display:flex; flex-direction:column; gap:10px; }
+        .msg { max-width: 78%; padding: 10px 12px; border-radius: 12px; line-height: 1.35; white-space: pre-wrap; word-wrap: break-word; border: 1px solid transparent; }
+        .msg.userMsg { align-self:flex-end; background: rgba(122,162,255,.16); border-color: rgba(122,162,255,.28); }
+        .msg.aiMsg { align-self:flex-start; background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.10); }
+        .composer { display:flex; gap:10px; padding: 12px; border-top:1px solid var(--border); background: rgba(0,0,0,.15); }
+        textarea { flex:1; resize:none; height: 44px; max-height: 180px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: rgba(0,0,0,.25); color: var(--text); outline:none; }
+        textarea:focus { border-color: rgba(122,162,255,.45); box-shadow: 0 0 0 3px rgba(122,162,255,.10); }
+        button { padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(122,162,255,.35); background: rgba(122,162,255,.18); color: var(--text); cursor:pointer; font-weight: 650; }
+        button:disabled { opacity:.55; cursor:not-allowed; }
+        .row { display:flex; align-items:center; gap:10px; }
+        .pill { font-size: 12px; color: var(--muted); border: 1px solid var(--border); padding: 6px 10px; border-radius: 999px; }
+        .error { color: #ffb4b4; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <div>
+            <div class="title">MClub AI Chat</div>
+            <div class="hint">This chat uses the same RAG pipeline as WhatsApp. Anonymous users can chat; actions may require linking/login.</div>
+        </div>
+        <div class="row">
+            <div class="pill" id="statusPill">Ready</div>
+            <button class="pill" id="clearBtn" type="button" style="background: rgba(255,255,255,.04); cursor:pointer;">Clear</button>
+            <a class="pill" href="/" style="text-decoration:none; color:inherit;">Home</a>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div id="messages" class="messages">
+            <div class="msg ai">Hi! Ask me about clubs, events, attendance, ratings, or comments.</div>
+        </div>
+
+        <div class="composer">
+            <label for="input" style="position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden;">Chat message</label>
+            <textarea id="input" placeholder="Type a message… (Enter to send, Shift+Enter for new line)"></textarea>
+            <button id="sendBtn">Send</button>
+        </div>
+        <div style="padding: 0 12px 12px 12px;" class="hint">
+            <span id="error" class="error"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+    const statusPill = document.getElementById('statusPill');
+    const clearBtn = document.getElementById('clearBtn');
+    const errorEl = document.getElementById('error');
+
+    function addMessage(role, text) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'msg ' + (role === 'user' ? 'userMsg' : 'aiMsg');
+        wrapper.textContent = text;
+        messagesEl.appendChild(wrapper);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setBusy(busy) {
+        sendBtn.disabled = busy;
+        statusPill.textContent = busy ? 'Thinking…' : 'Ready';
+        statusPill.style.borderColor = busy ? 'rgba(255,255,255,.25)' : 'rgba(255,255,255,.10)';
+    }
+
+    const CONVERSATION_ID_KEY = 'mclub.chat.conversationId';
+    let conversationId = localStorage.getItem(CONVERSATION_ID_KEY) || '';
+
+    async function ensureConversationId() {
+        if (conversationId && conversationId.trim().length > 0) return conversationId;
+
+        try {
+            const res = await fetch('/api/chat/conversation-id');
+            if (!res.ok) return '';
+            const data = await res.json();
+            if (data && data.conversationId) {
+                conversationId = data.conversationId;
+                localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
+            }
+        } catch (_) {
+            // ignore
+        }
+        return conversationId;
+    }
+
+    async function send() {
+        const text = (inputEl.value || '').trim();
+        if (!text) return;
+
+        errorEl.textContent = '';
+        addMessage('user', text);
+        inputEl.value = '';
+        setBusy(true);
+
+        try {
+            await ensureConversationId();
+
+            const res = await fetch('/api/chat/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    conversationId,
+                    from: 'web',
+                    text
+                })
+            });
+
+            if (!res.ok) {
+                const body = await res.text();
+                errorEl.textContent = 'HTTP ' + res.status + ': ' + body;
+                addMessage('ai', 'Sorry — I ran into an error handling that message.');
+                return;
+            }
+
+            const data = await res.json();
+            addMessage('ai', data.assistantMessage ?? '(empty reply)');
+        } catch (e) {
+            errorEl.textContent = e.message || String(e);
+            addMessage('ai', 'Sorry — I ran into an error handling that message.');
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function loadHistory() {
+        try {
+            await ensureConversationId();
+            const qs = conversationId ? ('?conversationId=' + encodeURIComponent(conversationId)) : '';
+            const res = await fetch('/api/chat/history' + qs);
+            if (!res.ok) return;
+            const data = await res.json();
+            const msgs = (data && data.messages) ? data.messages : [];
+
+            if (msgs.length > 0) {
+                // Replace the initial greeting with real history
+                messagesEl.innerHTML = '';
+            }
+
+            for (const m of msgs) {
+                if (!m || !m.content) continue;
+                addMessage(m.role === 'user' ? 'user' : 'ai', m.content);
+            }
+        } catch (_) {
+            // ignore history load errors
+        }
+    }
+
+    async function clearHistory() {
+        errorEl.textContent = '';
+        setBusy(true);
+        try {
+            await ensureConversationId();
+            const qs = conversationId ? ('?conversationId=' + encodeURIComponent(conversationId)) : '';
+            const res = await fetch('/api/chat/history' + qs, { method: 'DELETE' });
+            if (!res.ok) {
+                const body = await res.text();
+                errorEl.textContent = 'HTTP ' + res.status + ': ' + body;
+                return;
+            }
+            messagesEl.innerHTML = '';
+            addMessage('ai', 'Chat cleared. How can I help?');
+        } catch (e) {
+            errorEl.textContent = e.message || String(e);
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    clearBtn.addEventListener('click', clearHistory);
+    sendBtn.addEventListener('click', send);
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            send();
+        }
+    });
+
+    loadHistory();
+</script>
+</body>
+</html>
+
+

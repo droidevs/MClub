@@ -23,7 +23,11 @@ public class RateEventTool implements Tool {
 
     @Override
     public ToolResult execute(ToolCall call, ConversationContext ctx) {
-        String email = ctx.userEmail().orElseThrow(() -> new IllegalStateException("User not linked"));
+        String email = ctx.userEmail().orElse(null);
+        if (email == null) {
+            return ToolResult.of("To rate events, please link your account first (OTP linking). Ask me: 'link my account'.");
+        }
+
 
         Object eventIdRaw = call.arguments().get("eventId");
         Object starsRaw = call.arguments().get("stars");
