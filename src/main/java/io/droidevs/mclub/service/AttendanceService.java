@@ -28,6 +28,8 @@ public class AttendanceService {
     private final ClubAuthorizationService clubAuthorizationService;
     private final AttendanceTokenService attendanceTokenService;
     private final AttendanceMapper attendanceMapper;
+    private final io.droidevs.mclub.mapper.EventAttendanceFactoryMapper eventAttendanceFactoryMapper;
+    private final io.droidevs.mclub.mapper.EventAttendanceWindowFactoryMapper eventAttendanceWindowFactoryMapper;
 
     @Transactional
     public AttendanceEventQrDto openOrUpdateWindow(UUID eventId, AttendanceWindowRequest request, String organizerEmail) {
@@ -38,7 +40,7 @@ public class AttendanceService {
         String tokenHash = attendanceTokenService.sha256Hex(rawToken);
 
         EventAttendanceWindow window = windowRepository.findByEventId(eventId)
-                .orElseGet(() -> EventAttendanceWindow.builder().event(event).build());
+                .orElseGet(() -> eventAttendanceWindowFactoryMapper.create(event));
 
         window.setActive(true);
         window.setOpensBeforeStartMinutes(request.getOpensBeforeStartMinutes());
@@ -93,12 +95,10 @@ public class AttendanceService {
             return attendanceMapper.toDto(existing);
         }
 
-        EventAttendance attendance = EventAttendance.builder()
-                .event(event)
-                .user(student)
-                .checkedInBy(null)
-                .method(AttendanceMethod.STUDENT_SCANNED_EVENT_QR)
-                .build();
+        EventAttendance attendance = eventAttendanceFactoryMapper.create(AttendanceMethod.STUDENT_SCANNED_EVENT_QR);
+        attendance.setEvent(event);
+        attendance.setUser(student);
+        attendance.setCheckedInBy(null);
 
         return attendanceMapper.toDto(eventAttendanceRepository.save(attendance));
     }
@@ -134,12 +134,10 @@ public class AttendanceService {
 
         User organizer = userRepository.findByEmail(organizerEmail).orElseThrow();
 
-        EventAttendance attendance = EventAttendance.builder()
-                .event(event)
-                .user(student)
-                .checkedInBy(organizer)
-                .method(AttendanceMethod.ADMIN_SCANNED_STUDENT_QR)
-                .build();
+        EventAttendance attendance = eventAttendanceFactoryMapper.create(AttendanceMethod.ADMIN_SCANNED_STUDENT_QR);
+        attendance.setEvent(event);
+        attendance.setUser(student);
+        attendance.setCheckedInBy(organizer);
 
         return attendanceMapper.toDto(eventAttendanceRepository.save(attendance));
     }
