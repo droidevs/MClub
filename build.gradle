@@ -10,7 +10,9 @@ description = 'MClub'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        // Spring Boot 3.3.x + Lombok/MapStruct are stable on Java 21.
+        // JDK 25 currently breaks Lombok annotation processing.
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -23,42 +25,58 @@ ext {
 }
 
 dependencies {
+    // --- SPRING CORE ---
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-webflux'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'io.lettuce:lettuce-core'
-
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    implementation("org.postgresql:postgresql")
-    implementation("org.flywaydb:flyway-database-postgresql:11.3.3")
-    // DB migrations
-    implementation("org.flywaydb:flyway-core:11.3.3")
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
+    // Redis (only if used)
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // --- DATABASE ---
+    runtimeOnly 'org.postgresql:postgresql'
+
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // --- JWT ---
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
-    implementation 'org.mapstruct:mapstruct:1.6.0.Beta1'
-    runtimeOnly 'org.postgresql:postgresql'
 
-    implementation 'org.springframework.modulith:spring-modulith-starter-core'
+    // --- MAPSTRUCT (STABLE) ---
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+
+    // --- LOMBOK ---
     compileOnly 'org.projectlombok:lombok'
+
+    // --- ANNOTATION PROCESSORS ---
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // --- MODULITH ---
+    implementation 'org.springframework.modulith:spring-modulith-starter-core'
+
+    // --- DEV ---
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.0.Beta1'
+
+    // --- TEST ---
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation ("org.springframework.modulith:spring-modulith-starter-test")
-    testRuntimeOnly 'com.h2database:h2'
-    testCompileOnly 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
+
+    // Needed for Gradle/JUnit Platform in some environments
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testAnnotationProcessor 'org.projectlombok:lombok'
+
+    testRuntimeOnly 'com.h2database:h2'
 }
 
 dependencyManagement {
@@ -70,6 +88,3 @@ dependencyManagement {
 test {
     useJUnitPlatform()
 }
-//tasks.named('test') {
-   // useJUnitPlatform()
-//}

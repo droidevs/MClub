@@ -7,12 +7,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
 
 import java.util.List;
 
@@ -36,9 +36,62 @@ class JwtAuthenticationFilterTest {
     @BeforeEach
     void setUp() {
         SecurityContextHolder.clearContext();
-        filter = new JwtAuthenticationFilter();
-        ReflectionTestUtils.setField(filter, "tokenProvider", tokenProvider);
-        ReflectionTestUtils.setField(filter, "customUserDetailsService", userDetailsService);
+
+        ObjectProvider<JwtTokenProvider> tokenProviderProvider = new ObjectProvider<>() {
+            @Override
+            public JwtTokenProvider getObject(Object... args) {
+                return tokenProvider;
+            }
+
+            @Override
+            public JwtTokenProvider getObject() {
+                return tokenProvider;
+            }
+
+            @Override
+            public JwtTokenProvider getIfAvailable() {
+                return tokenProvider;
+            }
+
+            @Override
+            public JwtTokenProvider getIfUnique() {
+                return tokenProvider;
+            }
+
+            @Override
+            public java.util.Iterator<JwtTokenProvider> iterator() {
+                return java.util.List.of(tokenProvider).iterator();
+            }
+        };
+
+        ObjectProvider<UserDetailsService> udsProvider = new ObjectProvider<>() {
+            @Override
+            public UserDetailsService getObject(Object... args) {
+                return userDetailsService;
+            }
+
+            @Override
+            public UserDetailsService getObject() {
+                return userDetailsService;
+            }
+
+            @Override
+            public UserDetailsService getIfAvailable() {
+                return userDetailsService;
+            }
+
+            @Override
+            public UserDetailsService getIfUnique() {
+                return userDetailsService;
+            }
+
+            @Override
+            public java.util.Iterator<UserDetailsService> iterator() {
+                return java.util.List.of(userDetailsService).iterator();
+            }
+        };
+
+        filter = new JwtAuthenticationFilter(tokenProviderProvider, udsProvider);
     }
 
     @Test
@@ -108,4 +161,3 @@ class JwtAuthenticationFilterTest {
         verify(filterChain).doFilter(req, res);
     }
 }
-

@@ -6,7 +6,7 @@
 <div class="container" th:fragment="content">
     <div class="row mt-4">
         <div class="col-12 text-center mb-4">
-            <h1 class="display-5">Welcome back, <span th:text="${username}">User</span>!</h1>
+            <h1 class="display-5">Welcome back, <span sec:authentication="name">User</span>!</h1>
             <p class="lead text-muted" sec:authorize="hasRole('PLATFORM_ADMIN')">Platform Admin Dashboard: review club applications and oversee the platform.</p>
             <p class="lead text-muted" sec:authorize="hasRole('STUDENT')">Student Dashboard: explore clubs & events, check in with QR at events, and rate events after attending.</p>
         </div>
