@@ -11,7 +11,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "mclub.ai.openai")
 public class OpenAiProperties {
 
-    /** Set to true to enable OpenAI client instead of StubLlmClient. */
+    /** Set to true to enable the OpenAI client. */
     private boolean enabled = false;
 
     /** Base URL for OpenAI-compatible API, e.g. https://api.openai.com */

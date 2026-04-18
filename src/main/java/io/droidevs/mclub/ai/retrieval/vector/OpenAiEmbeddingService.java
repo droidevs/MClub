@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.droidevs.mclub.ai.llm.OpenAiProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.util.Map;
 
 /** OpenAI-compatible embedding adapter. */
 @Service
+@Primary
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "mclub.ai.openai", name = "enabled", havingValue = "true")
 public class OpenAiEmbeddingService implements EmbeddingService {
@@ -67,5 +69,3 @@ public class OpenAiEmbeddingService implements EmbeddingService {
         return DIMS;
     }
 }
-
-

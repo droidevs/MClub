@@ -148,6 +148,7 @@
 
                 const resp = await fetch(`/api/comments/EVENT/${encodeURIComponent(eventId)}`, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers,
                     body: JSON.stringify({ content, parentId: null })
                 });

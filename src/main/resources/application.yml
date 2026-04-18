@@ -50,10 +50,15 @@ mclub:
       timeout-ms: 15000
 
     vector:
+      enabled: true
       backfill-enabled: false
       backfill:
         initial-delay-ms: 30000
         fixed-delay-ms: 3600000
+
+    embedding:
+      inmemory:
+        enabled: false
 
   whatsapp:
     linking:
@@ -89,3 +94,10 @@ logging:
     io.droidevs.mclub.controller.WebAuthController: DEBUG
     io.droidevs.mclub.controller.MeController: DEBUG
     io.droidevs.mclub.service.AuthService: DEBUG
+    io.droidevs.mclub.ai: DEBUG
+    io.droidevs.mclub.ai.rag: DEBUG
+    io.droidevs.mclub.ai.agent: DEBUG
+    io.droidevs.mclub.ai.tools: DEBUG
+    io.droidevs.mclub.ai.retrieval: DEBUG
+    io.droidevs.mclub.ai.llm: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG

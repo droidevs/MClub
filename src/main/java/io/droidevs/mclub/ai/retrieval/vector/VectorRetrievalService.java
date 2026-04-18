@@ -8,14 +8,12 @@ import java.util.List;
 
 /**
  * Vector retrieval: embeds query and performs similarity search in pgvector.
- *
- * <p>Currently requires VectorEmbeddingService to be implemented/configured.
  */
 @Service
 @RequiredArgsConstructor
 public class VectorRetrievalService {
 
-    private final VectorEmbeddingService embeddingService;
+    private final EmbeddingService embeddingService;
     private final VectorDbService vectorDbService;
 
     public List<VectorSearchResult> retrieveSimilar(ConversationContext ctx, String userMessage, int topK) {
@@ -36,4 +34,3 @@ public class VectorRetrievalService {
         return sb.toString();
     }
 }
-

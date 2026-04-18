@@ -1,5 +1,6 @@
 package io.droidevs.mclub.ai.retrieval.vector;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import java.util.List;
  */
 @Service
 @Primary
+@ConditionalOnProperty(prefix = "mclub.ai.embedding.inmemory", name = "enabled", havingValue = "true")
 public class InMemoryEmbeddingService implements EmbeddingService {
 
     private static final int DIMS = 32;
