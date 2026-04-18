@@ -14,23 +14,16 @@ import java.util.List;
 public class VectorRetrievalService {
 
     private final EmbeddingService embeddingService;
-    private final VectorDbService vectorDbService;
+    private final VectorIndexRepository vectorIndexRepository;
 
     public List<VectorSearchResult> retrieveSimilar(ConversationContext ctx, String userMessage, int topK) {
         List<Double> emb = embeddingService.embed(userMessage);
-        String literal = toPgvectorLiteral(emb);
-        return vectorDbService.search(literal, topK, null);
-
+        String literal = VectorSearchService.toPgvectorLiteral(emb);
+        return vectorIndexRepository.search(literal, topK, null, null, null);
     }
 
+    // Keep helper for any other callers
     static String toPgvectorLiteral(List<Double> emb) {
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        for (int i = 0; i < emb.size(); i++) {
-            if (i > 0) sb.append(',');
-            sb.append(emb.get(i));
-        }
-        sb.append(']');
-        return sb.toString();
+        return VectorSearchService.toPgvectorLiteral(emb);
     }
 }
