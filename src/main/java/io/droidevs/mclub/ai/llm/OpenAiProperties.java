@@ -11,22 +11,20 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "mclub.ai.openai")
 public class OpenAiProperties {
 
-    /** Set to true to enable OpenAI client instead of StubLlmClient. */
+    /** Set to true to enable the OpenAI client. */
     private boolean enabled = false;
 
     /** Base URL for OpenAI-compatible API, e.g. https://api.openai.com */
-    @NotBlank
+    @NotBlank // safe default; always present
     private String baseUrl = "https://api.openai.com";
 
-    /** API key for Authorization: Bearer ... */
-    @NotBlank
+    /** API key for Authorization: Bearer ... (required only when enabled). */
     private String apiKey;
 
-    /** Model name, e.g. gpt-4.1-mini, gpt-4o-mini, etc. */
-    @NotBlank
+    /** Model name, e.g. gpt-4.1-mini, gpt-4o-mini, etc. (required only when enabled). */
     private String model = "gpt-4o-mini";
 
     /** Request timeout in milliseconds. */
     private long timeoutMs = 15000;
-}
 
+}

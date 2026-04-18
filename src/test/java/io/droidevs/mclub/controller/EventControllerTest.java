@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(EventController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc // enable Spring Security filters
 @Import(io.droidevs.mclub.security.SecurityConfig.class)
 class EventControllerTest {
 

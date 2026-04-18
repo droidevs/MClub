@@ -8,32 +8,27 @@ import java.util.List;
 
 /**
  * Vector retrieval: embeds query and performs similarity search in pgvector.
- *
- * <p>Currently requires VectorEmbeddingService to be implemented/configured.
  */
 @Service
 @RequiredArgsConstructor
 public class VectorRetrievalService {
 
-    private final VectorEmbeddingService embeddingService;
-    private final VectorDbService vectorDbService;
+    private final EmbeddingService embeddingService;
+    private final VectorIndexRepository vectorIndexRepository;
 
     public List<VectorSearchResult> retrieveSimilar(ConversationContext ctx, String userMessage, int topK) {
         List<Double> emb = embeddingService.embed(userMessage);
-        String literal = toPgvectorLiteral(emb);
-        return vectorDbService.search(literal, topK, null);
+        String literal = VectorSearchService.toPgvectorLiteral(emb);
 
+        java.util.UUID clubId = ctx != null ? ctx.clubScopeId().orElse(null) : null;
+        java.util.UUID eventId = ctx != null ? ctx.eventScopeId().orElse(null) : null;
+
+        // If eventId is present, it’s the strongest scope. Club scope can remain as an additional filter.
+        return vectorIndexRepository.search(literal, topK, null, clubId, eventId);
     }
 
+    // Keep helper for any other callers
     static String toPgvectorLiteral(List<Double> emb) {
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        for (int i = 0; i < emb.size(); i++) {
-            if (i > 0) sb.append(',');
-            sb.append(emb.get(i));
-        }
-        sb.append(']');
-        return sb.toString();
+        return VectorSearchService.toPgvectorLiteral(emb);
     }
 }
-

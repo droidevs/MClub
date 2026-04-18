@@ -1,11 +1,9 @@
 package io.droidevs.mclub.ai.link;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
 
 /** Default in-memory adapter implementing the OTP attempt port. */
 @Component
-@ConditionalOnMissingBean(OtpAttemptPort.class)
 public class InMemoryOtpAttemptAdapter implements OtpAttemptPort {
 
     private final OtpAttemptService delegate;
@@ -29,4 +27,3 @@ public class InMemoryOtpAttemptAdapter implements OtpAttemptPort {
         delegate.reset(phoneE164);
     }
 }
-

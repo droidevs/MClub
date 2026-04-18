@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(EventRatingController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc // enable Spring Security filters
 @Import(io.droidevs.mclub.security.SecurityConfig.class)
 class EventRatingControllerTest {
 
@@ -89,4 +89,3 @@ class EventRatingControllerTest {
         verify(eventService).requireCanManageEvent("manager@example.com", eventId);
     }
 }
-

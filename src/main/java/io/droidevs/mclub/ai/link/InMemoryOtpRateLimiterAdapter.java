@@ -1,11 +1,9 @@
 package io.droidevs.mclub.ai.link;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
 
 /** Default in-memory adapter implementing the rate limiter port. */
 @Component
-@ConditionalOnMissingBean(OtpRateLimiterPort.class)
 public class InMemoryOtpRateLimiterAdapter implements OtpRateLimiterPort {
 
     private final OtpRateLimiter delegate;
@@ -19,4 +17,3 @@ public class InMemoryOtpRateLimiterAdapter implements OtpRateLimiterPort {
         delegate.requireAllowed(phoneE164);
     }
 }
-

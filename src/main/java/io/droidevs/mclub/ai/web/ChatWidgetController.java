@@ -34,7 +34,7 @@ public class ChatWidgetController {
                 ? "web:" + httpSession.getId()
                 : req.conversationId();
 
-        var r = platformChatService.chat(conversationId, req.from(), req.text());
+        var r = platformChatService.chat(conversationId, req.from(), req.text(), req.clubId(), req.eventId());
         return new ChatMessageResponse(r.message());
     }
 

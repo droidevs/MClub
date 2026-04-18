@@ -1,37 +1,56 @@
 package io.droidevs.mclub.security;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.util.Iterator;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Lightweight wiring test for SecurityConfig.
- *
- * Route matrix tests should be added later using MockMvc once the IDE resolves spring-test web imports.
  */
 class SecurityConfigAuthorizationTest {
 
-    @Test
-    void securityConfig_shouldHoldJwtAuthenticationFilterBeanReference() {
-        SecurityConfig cfg = new SecurityConfig();
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter();
-        ReflectionTestUtils.setField(cfg, "jwtAuthenticationFilter", filter);
+    private static final class EmptyJwtFilterProvider implements ObjectProvider<JwtAuthenticationFilter> {
+        @Override
+        public JwtAuthenticationFilter getObject(Object... args) {
+            throw new UnsupportedOperationException();
+        }
 
-        Object injected = ReflectionTestUtils.getField(cfg, "jwtAuthenticationFilter");
-        assertSame(filter, injected);
+        @Override
+        public JwtAuthenticationFilter getObject() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public JwtAuthenticationFilter getIfAvailable() {
+            return null;
+        }
+
+        @Override
+        public JwtAuthenticationFilter getIfUnique() {
+            return null;
+        }
+
+        @Override
+        public Iterator<JwtAuthenticationFilter> iterator() {
+            return java.util.Collections.emptyIterator();
+        }
     }
 
     @Test
-    void jwtAuthenticationFilter_shouldBeConfiguredToRunBeforeUsernamePasswordAuthenticationFilter() {
-        // Intent check: SecurityConfig adds JwtAuthenticationFilter before UsernamePasswordAuthenticationFilter.
-        // We can't easily introspect the chain without building HttpSecurity here; so we assert class references.
+    void securityConfig_shouldProvideJwtAuthenticationFilterForChain_evenWhenRealFilterMissing() {
+        SecurityConfig cfg = new SecurityConfig();
+        OncePerRequestFilter filter = cfg.jwtAuthenticationFilterForChain(new EmptyJwtFilterProvider());
+        assertNotNull(filter);
+    }
+
+    @Test
+    void jwtAuthenticationFilter_shouldBeKnownType() {
         assertNotNull(UsernamePasswordAuthenticationFilter.class);
         assertNotNull(JwtAuthenticationFilter.class);
-        assertTrue(UsernamePasswordAuthenticationFilter.class.isAssignableFrom(UsernamePasswordAuthenticationFilter.class));
     }
 }
-
-

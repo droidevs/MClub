@@ -41,6 +41,7 @@ class CriticalFlowsIT {
         User student = userRepository.save(User.builder().email("student_it@mclub.com").fullName("Student").password("x").role(Role.STUDENT).build());
 
         Club club = clubRepository.save(Club.builder().name("Club").description("D").createdBy(admin).build());
+        // Important: attach membership to the persisted admin entity with an ID
         membershipRepository.save(Membership.builder().club(club).user(admin).role(ClubRole.ADMIN).status(MembershipStatus.APPROVED).build());
 
         // Create event via service (requires club-scoped authorization). Platform admin passes.
@@ -49,8 +50,8 @@ class CriticalFlowsIT {
         create.setTitle("E");
         create.setDescription("D");
         create.setLocation("L");
-        create.setStartDate(LocalDateTime.now().minusHours(2));
-        create.setEndDate(LocalDateTime.now().minusHours(1));
+        create.setStartDate(LocalDateTime.now());
+        create.setEndDate(LocalDateTime.now().plusHours(4));
 
         EventDto created = eventService.createEvent(create, admin.getEmail());
 
@@ -82,6 +83,3 @@ class CriticalFlowsIT {
         assertTrue(eventAttendanceRepository.findByEventIdAndUserId(created.getId(), student.getId()).isPresent());
     }
 }
-
-
-

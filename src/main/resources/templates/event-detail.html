@@ -4,6 +4,7 @@
 <body th:replace="~{layout :: body(content=~{this :: content})}">
 
 <div class="container" th:fragment="content">
+    <div data-chat-scope data-event-id="" th:attr="data-event-id=${event.id}"></div>
     <div class="d-flex justify-content-between align-items-start mt-4">
         <div>
             <h2 class="display-6 mb-1" th:text="${event.title}">Event title</h2>
@@ -148,6 +149,7 @@
 
                 const resp = await fetch(`/api/comments/EVENT/${encodeURIComponent(eventId)}`, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers,
                     body: JSON.stringify({ content, parentId: null })
                 });
