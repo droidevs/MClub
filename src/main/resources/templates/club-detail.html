@@ -4,6 +4,8 @@
 <body th:replace="~{layout :: body(content=~{this :: content})}">
 
 <div class="container" th:fragment="content">
+    <div data-chat-scope data-club-id="" th:attr="data-club-id=${club.id}"></div>
+
     <div class="row mt-4 mb-3 align-items-start">
         <div class="col">
             <h2 class="display-6"><i class="bi bi-people-fill text-primary"></i> <span th:text="${club.name}">Club Name</span></h2>

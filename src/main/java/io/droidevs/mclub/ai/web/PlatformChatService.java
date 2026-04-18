@@ -19,31 +19,37 @@ public class PlatformChatService {
     private final io.droidevs.mclub.repository.UserRepository userRepository;
 
     public RagResponse chat(String conversationId, String from, String text) {
+        return chat(conversationId, from, text, null, null);
+    }
+
+    public RagResponse chat(String conversationId, String from, String text, java.util.UUID clubScopeId, java.util.UUID eventScopeId) {
         ConversationSession session = store.getOrCreate(conversationId, from);
         session = store.appendUserMessage(session, text);
 
-        // If the user is authenticated in the platform session, use that identity for authorization.
-        ConversationContext ctx = buildContext(from);
+        ConversationContext ctx = buildContext(from, clubScopeId, eventScopeId);
         RagResponse response = ragService.handle(session, ctx);
 
         store.appendAssistantMessage(session, response.message());
         return response;
     }
 
-    private ConversationContext buildContext(String from) {
+    private ConversationContext buildContext(String from, java.util.UUID clubScopeId, java.util.UUID eventScopeId) {
         var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
-            return ConversationContext.ofUnscoped(from, java.util.Optional.empty(), java.util.Optional.empty(), false);
+            return new ConversationContext(from, java.util.Optional.empty(), java.util.Optional.empty(), false,
+                    java.util.Optional.ofNullable(clubScopeId), java.util.Optional.ofNullable(eventScopeId));
         }
 
         // In this project the principal username is the email (e.g. Jwt or form login).
         String email = auth.getName();
         if (email == null || email.isBlank() || "anonymousUser".equalsIgnoreCase(email)) {
-            return ConversationContext.ofUnscoped(from, java.util.Optional.empty(), java.util.Optional.empty(), false);
+            return new ConversationContext(from, java.util.Optional.empty(), java.util.Optional.empty(), false,
+                    java.util.Optional.ofNullable(clubScopeId), java.util.Optional.ofNullable(eventScopeId));
         }
 
         var userId = userRepository.findByEmail(email).map(io.droidevs.mclub.domain.User::getId);
         boolean linked = userId.isPresent();
-        return ConversationContext.ofUnscoped(from, userId, java.util.Optional.of(email), linked);
+        return new ConversationContext(from, userId, java.util.Optional.of(email), linked,
+                java.util.Optional.ofNullable(clubScopeId), java.util.Optional.ofNullable(eventScopeId));
     }
 }
