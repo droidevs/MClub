@@ -50,8 +50,8 @@ class CriticalFlowsIT {
         create.setTitle("E");
         create.setDescription("D");
         create.setLocation("L");
-        create.setStartDate(LocalDateTime.now().minusHours(2));
-        create.setEndDate(LocalDateTime.now().minusHours(1));
+        create.setStartDate(LocalDateTime.now());
+        create.setEndDate(LocalDateTime.now().plusHours(4));
 
         EventDto created = eventService.createEvent(create, admin.getEmail());
 
@@ -83,6 +83,3 @@ class CriticalFlowsIT {
         assertTrue(eventAttendanceRepository.findByEventIdAndUserId(created.getId(), student.getId()).isPresent());
     }
 }
-
-
-

@@ -15,9 +15,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.lang.NonNull;
 
 @Configuration
 @EnableWebSecurity
@@ -49,9 +51,9 @@ public class SecurityConfig {
         // no-op fallback
         return new OncePerRequestFilter() {
             @Override
-            protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest request,
-                                            jakarta.servlet.http.HttpServletResponse response,
-                                            jakarta.servlet.FilterChain filterChain)
+            protected void doFilterInternal(@NonNull jakarta.servlet.http.HttpServletRequest request,
+                                            @NonNull jakarta.servlet.http.HttpServletResponse response,
+                                            @NonNull jakarta.servlet.FilterChain filterChain)
                     throws jakarta.servlet.ServletException, java.io.IOException {
                 filterChain.doFilter(request, response);
             }
@@ -64,7 +66,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
+                        // APIs should return 401
                         .defaultAuthenticationEntryPointFor(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), API_MATCHER)
+                        // Browser requests should get redirected to /login
+                        .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
                         .defaultAccessDeniedHandlerFor((request, response, accessDeniedException) -> {
                             response.setStatus(HttpStatus.FORBIDDEN.value());
                             response.setContentType("text/plain;charset=UTF-8");
@@ -84,6 +89,7 @@ public class SecurityConfig {
 
                         // API auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/me").permitAll()
 
                         // Public read-only APIs used by UI + tests
                         .requestMatchers(org.springframework.http.HttpMethod.GET,
@@ -109,7 +115,10 @@ public class SecurityConfig {
                         .requestMatchers("/club-applications/**").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("PLATFORM_ADMIN")
                         .anyRequest().authenticated()
-                );
+                )
+                // IMPORTANT: we implement /logout ourselves in WebAuthController.
+                // Disable Spring Security's default logout handling so the request reaches the controller.
+                .logout(AbstractHttpConfigurer::disable);
 
         http.addFilterBefore(jwtAuthenticationFilterForChain, UsernamePasswordAuthenticationFilter.class);
         return http.build();
