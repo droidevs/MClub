@@ -1,30 +1,23 @@
 package io.droidevs.mclub.controller;
 
-import io.droidevs.mclub.domain.ClubRole;
-import io.droidevs.mclub.domain.MembershipStatus;
-import io.droidevs.mclub.domain.User;
-import io.droidevs.mclub.dto.ActivityCreateRequest;
-import io.droidevs.mclub.dto.EventCreateRequest;
-import io.droidevs.mclub.dto.AttendanceRecordDto;
-import io.droidevs.mclub.domain.CommentTargetType;
-import io.droidevs.mclub.service.CommentService;
+import io.droidevs.mclub.domain.*;
+import io.droidevs.mclub.dto.*;
+import io.droidevs.mclub.exception.ForbiddenException;
+import io.droidevs.mclub.service.*;
 import io.droidevs.mclub.repository.ClubRepository;
 import io.droidevs.mclub.repository.MembershipRepository;
-import io.droidevs.mclub.service.CurrentUserService;
-import io.droidevs.mclub.service.AttendanceService;
-import io.droidevs.mclub.service.ClubService;
-import io.droidevs.mclub.service.EventService;
-import io.droidevs.mclub.service.MembershipService;
-import io.droidevs.mclub.service.EventRatingService;
-import io.droidevs.mclub.service.ActivityService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -39,6 +32,7 @@ public class WebController {
     private final EventService eventService;
     private final MembershipService membershipService;
     private final AttendanceService attendanceService;
+    private final ClubAuthorizationService authorizationService;
     private final ClubRepository clubRepository;
     private final MembershipRepository membershipRepository;
     private final CurrentUserService currentUserService;
@@ -57,7 +51,7 @@ public class WebController {
         model.addAttribute("authorities", auth.getAuthorities());
 
         // Load partial data for dashboard
-        model.addAttribute("recentClubs", clubService.getAllClubs(PageRequest.of(0, 5)).getContent());
+        model.addAttribute("recentClubs", clubService.getClubsSummary(PageRequest.of(0, 5)).getContent());
         model.addAttribute("recentEvents", eventService.getAllEvents(PageRequest.of(0, 5)).getContent());
 
         return "dashboard";
@@ -65,16 +59,34 @@ public class WebController {
 
     @GetMapping("/clubs")
     public String clubs(Model model, Pageable pageable) {
-        model.addAttribute("clubsPage", clubService.getAllClubs(pageable));
+        model.addAttribute("clubsPage", clubService.getClubsSummary(pageable));
         return "clubs";
     }
 
     @GetMapping("/clubs/{id}")
-    public String clubDetail(@PathVariable UUID id, Model model) {
-        model.addAttribute("club", clubService.getClub(id));
-        model.addAttribute("members", membershipService.getApprovedMembers(id));
+    public String clubDetail(@PathVariable UUID id,
+                             Model model,
+                             Authentication auth,
+                             @PageableDefault(size = 10) Pageable pageable) {
 
-        // snapshots
+        model.addAttribute("club", clubService.getClub(id));
+
+        List<MembershipDto> members = List.of();
+
+        boolean canViewMembers = false;
+
+        try {
+            members = membershipService.getRecentMembers(id, auth.getName());
+            canViewMembers = true;
+        } catch (Exception e) {
+            // forbidden OR any service exception → just hide members
+            canViewMembers = false;
+        }
+
+        model.addAttribute("membersPage", members);
+        model.addAttribute("recentMembers", members);
+        model.addAttribute("canViewMembers", canViewMembers);
+
         model.addAttribute("recentEvents", eventService.getRecentEventsByClub(id));
         model.addAttribute("recentActivities", activityService.getRecentByClub(id));
 
@@ -82,24 +94,69 @@ public class WebController {
     }
 
     @GetMapping("/clubs/{id}/members")
-    public String clubMembers(@PathVariable UUID id, Model model) {
-        model.addAttribute("club", clubService.getClub(id));
-        model.addAttribute("members", membershipService.getApprovedMembers(id));
-        return "club-members";
+    public String clubMembers(@PathVariable UUID id,
+                              Model model,
+                              Authentication auth,
+                              RedirectAttributes redirectAttributes,
+                              @PageableDefault(size = 20) Pageable pageable) {
+
+        try {
+            model.addAttribute("club", clubService.getClub(id));
+
+            Page<MembershipDto> membersPage = membershipService.getMembers(id, pageable, auth.getName());
+
+            model.addAttribute("membersPage", membersPage);
+            model.addAttribute("members", membersPage.getContent());
+
+            return "club-members";
+        } catch (ForbiddenException ex) {
+            redirectAttributes.addFlashAttribute("error", "You are not allowed to view club members.");
+            return "redirect:/clubs/" + id;
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("error", "Something went wrong.");
+            return "redirect:/clubs/" + id;
+        }
+
     }
 
     @GetMapping("/clubs/{id}/events")
-    public String clubEvents(@PathVariable UUID id, Model model) {
+    public String clubEvents(@PathVariable UUID id,
+                             @RequestParam(required = false) String q,
+                             Model model,
+                             @PageableDefault(size = 10) Pageable pageable) {
+
+        Page<EventDto> events;
+
+        if (q != null && !q.isBlank()) {
+            events = eventService.searchEvents(id, q, pageable);
+        } else {
+            events = eventService.getEventsByClub(id, pageable);
+        }
+
         model.addAttribute("club", clubService.getClub(id));
-        model.addAttribute("events", eventService.getEventsByClub(id));
+        model.addAttribute("eventsPage", events);
+        model.addAttribute("events", events.getContent());
+        model.addAttribute("query", q);
+
         return "club-events";
     }
 
     @GetMapping("/clubs/{id}/activities")
-    public String clubActivities(@PathVariable UUID id, Model model) {
+    public String clubActivities(@PathVariable UUID id, Model model, @PageableDefault Pageable pageable) {
+        Page<ActivitySummary> activities = activityService.getSummaryByClub(id, pageable);
+
         model.addAttribute("club", clubService.getClub(id));
-        model.addAttribute("activities", activityService.getByClub(id));
+        model.addAttribute("activitiesPage", activities);
+
         return "club-activities";
+    }
+
+    @GetMapping("/activities/{id}")
+    public String activityDetails(@PathVariable UUID id, Model model) {
+        ActivityDto activity = activityService.getById(id);
+
+        model.addAttribute("activity", activity);
+        return "activity-detail";
     }
 
     @GetMapping("/events")
@@ -109,62 +166,67 @@ public class WebController {
     }
 
     @GetMapping("/events/{id}")
-    public String eventDetail(@PathVariable UUID id, Model model, Authentication auth) {
+    public String eventDetail(@PathVariable UUID id,
+                              Model model,
+                              Authentication auth) {
+
         var event = eventService.getEvent(id);
 
         boolean eventEnded = event.getEndDate() != null
                 ? event.getEndDate().isBefore(LocalDateTime.now())
                 : (event.getStartDate() != null && event.getStartDate().isBefore(LocalDateTime.now()));
 
-        List<AttendanceRecordDto> attendance = Collections.emptyList();
+        long attendanceCount = 0;
+        boolean authenticated = true;
+
         if (eventEnded && auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
             try {
-                attendance = attendanceService.listAttendance(id, auth.getName());
+                attendanceCount = attendanceService.countAttendance(id);
             } catch (Exception ignored) {
-                // keep empty
+                // keep 0
             }
+        } else {
+            authenticated = false;
         }
 
-        // Rating summary (public endpoint; safe for anonymous users)
+        // Rating summary (unchanged)
         double ratingAverage = 0.0;
         long ratingCount = 0L;
         try {
             var summary = eventRatingService.getSummary(id);
             ratingAverage = summary.getAverage();
             ratingCount = summary.getCount();
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
 
-        // Load comment preview for display (posting is still restricted to STUDENT elsewhere)
+        // Comments (unchanged)
         try {
             String email = (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal()))
                     ? auth.getName()
                     : null;
-            model.addAttribute("comments", commentService.getRootPreview(CommentTargetType.EVENT, id, email, 3));
+            model.addAttribute("commentsPreview",
+                    commentService.getPreview(CommentTargetType.EVENT, id, email));
         } catch (Exception ignored) {
-            model.addAttribute("comments", Collections.emptyList());
+            model.addAttribute("commentsPreview",
+                    new CommentPreviewDto(0, 0, 0, List.of(), null));
         }
 
         model.addAttribute("event", event);
         model.addAttribute("eventEnded", eventEnded);
-        model.addAttribute("attendance", attendance);
-        model.addAttribute("attendanceCount", attendance.size());
+        model.addAttribute("attendanceCount", attendanceCount);
         model.addAttribute("ratingAverage", ratingAverage);
         model.addAttribute("ratingCount", ratingCount);
         model.addAttribute("auth", auth);
+
         return "event-detail";
     }
 
-    @GetMapping("/club-admin/clubs/{clubId}/events/new")
+    @GetMapping("/clubs/{clubId}/events/new")
     public String newClubEvent(@PathVariable UUID clubId, Model model, Authentication auth) {
         User user = currentUserService.requireUser(auth);
-        if (membershipRepository.findByUserIdAndClubId(user.getId(), clubId)
-                .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
-                .map(m -> m.getRole() == ClubRole.ADMIN || m.getRole() == ClubRole.STAFF)
-                .orElse(false) == false) {
+        if (!authorizationService.canManageClub(clubId, auth.getName())) {
             return "redirect:/";
         }
-        var club = clubRepository.findById(clubId).orElseThrow();
+        var club = clubService.getClub(clubId);
         EventCreateRequest form = new EventCreateRequest();
         form.setClubId(clubId);
         model.addAttribute("club", club);
@@ -172,13 +234,10 @@ public class WebController {
         return "club-event-new";
     }
 
-    @GetMapping("/club-admin/clubs/{clubId}/activities/new")
-    public String newClubActivity(@PathVariable UUID clubId, Model model, Authentication auth) {
+    @GetMapping("/clubs/{clubId}/activities/new")
+    public String newClubActivity(@PathVariable UUID clubId, Model model,Pageable pageable, Authentication auth) {
         User user = currentUserService.requireUser(auth);
-        if (membershipRepository.findByUserIdAndClubId(user.getId(), clubId)
-                .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
-                .map(m -> m.getRole() == ClubRole.ADMIN || m.getRole() == ClubRole.STAFF)
-                .orElse(false) == false) {
+        if (!authorizationService.canManageClub(clubId, auth.getName())) {
             return "redirect:/";
         }
         var club = clubRepository.findById(clubId).orElseThrow();
@@ -186,7 +245,88 @@ public class WebController {
         form.setClubId(clubId);
         model.addAttribute("club", club);
         model.addAttribute("form", form);
-        model.addAttribute("events", eventService.getEventsByClub(clubId));
+        model.addAttribute("events", eventService.getEventsByClub(clubId,pageable));
         return "club-activity-new";
+    }
+
+    @GetMapping("/clubs/my-managed")
+    public String myManagedClubs(Model model,
+                                 Authentication auth,
+                                 Pageable pageable) {
+
+        Page<ClubSummaryDto> clubsPage = clubService.getMyManagedClubsSummary(auth.getName(), pageable);
+
+        model.addAttribute("clubsPage", clubsPage);
+        model.addAttribute("clubs", clubsPage.getContent()); // optional
+
+        return "my-managed-clubs";
+    }
+
+    @GetMapping("/clubs/{clubId}/memberships")
+    public String membershipApplications(@PathVariable UUID clubId, Model model, Authentication auth, Pageable pageable) {
+
+        try {
+            // 1. Load club (missing in your code)
+            ClubDto club = clubService.getClub(clubId);
+
+            // 2. Get paginated applications with auth check inside service
+            Page<Membership> applications =
+                    membershipService.getMembershipApplications(clubId, pageable, auth.getName());
+
+            // 3. Model attributes
+            model.addAttribute("club", club);
+            model.addAttribute("applicationsPage", applications);
+            model.addAttribute("applications", applications.getContent()); // optional for Thymeleaf
+
+            return "membership-applications";
+        } catch (Exception e) {
+            return "redirect:/dashboard";
+        }
+    }
+
+    @GetMapping("/clubs/{clubId}/manage-members")
+    public String manageMembers(
+            @PathVariable UUID clubId,
+            @RequestParam(required = false) String q,
+            Model model,
+            @PageableDefault Pageable pageable,
+            Authentication auth
+    ) {
+        ClubDto club = clubService.getClub(clubId);
+
+        if (!authorizationService.canManageClub(clubId, auth.getName())) {
+            return "redirect:/dashboard";
+        }
+
+        Page<MembershipDto> members;
+
+        if (q == null || q.isBlank()) {
+            members = membershipService.getMembers(clubId, pageable, auth.getName());
+        } else {
+            members = membershipService.searchMembers(clubId, q, pageable, auth.getName());
+        }
+        model.addAttribute("club", club);
+        model.addAttribute("membersPage", members);
+        model.addAttribute("query", q);
+
+        return "manage-members";
+    }
+
+    @GetMapping("/clubs/{clubId}/membership-history")
+    public String membershipHistory(
+            @PathVariable UUID clubId,
+            Model model,
+            Pageable pageable,
+            Authentication auth
+    ) {
+
+        Page<MembershipDto> history =
+                membershipService.getMembershipHistory(clubId, pageable, auth.getName());
+
+        model.addAttribute("historyPage", history);
+        model.addAttribute("history", history.getContent());
+        model.addAttribute("club", clubService.getClub(clubId));
+
+        return "membership-history";
     }
 }

@@ -9,8 +9,18 @@ import org.mapstruct.Mapping;
 public interface ClubApplicationEntityMapper {
 
     @Mapping(target = "id", ignore = true)
+
+    // relations must be set in service layer
     @Mapping(target = "submittedBy", ignore = true)
+    @Mapping(target = "reviewedBy", ignore = true)
+
+    // system fields
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "reviewedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+
+    // IMPORTANT: enum mapping
+    @Mapping(target = "status", expression = "java(io.droidevs.mclub.domain.ApplicationStatus.PENDING)")
     ClubApplication toEntity(ClubApplicationDto dto);
 }
 

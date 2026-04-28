@@ -8,13 +8,13 @@ import io.droidevs.mclub.mapper.AttendanceMapper;
 import io.droidevs.mclub.repository.*;
 import io.droidevs.mclub.security.Role;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,17 +34,15 @@ public class AttendanceService {
     @Transactional
     public AttendanceEventQrDto openOrUpdateWindow(UUID eventId, AttendanceWindowRequest request, String organizerEmail) {
         Event event = getEvent(eventId);
-        clubAuthorizationService.requirePlatformAdminOrClubAdminOrStaff(organizerEmail, event.getClub().getId());
+        clubAuthorizationService.requireClubManager(event.getClub().getId(), organizerEmail);
 
         String rawToken = attendanceTokenService.generateRawToken();
         String tokenHash = attendanceTokenService.sha256Hex(rawToken);
 
         EventAttendanceWindow window = windowRepository.findByEventId(eventId)
-                .orElseGet(() -> eventAttendanceWindowFactoryMapper.create(event));
-
+                .orElseGet(() -> eventAttendanceWindowFactoryMapper.create(event, request.getOpensBeforeStartMinutes(), request.getClosesAfterStartMinutes()));
         window.setActive(true);
-        window.setOpensBeforeStartMinutes(request.getOpensBeforeStartMinutes());
-        window.setClosesAfterStartMinutes(request.getClosesAfterStartMinutes());
+
         window.setTokenHash(tokenHash);
         window.setTokenRotatedAt(LocalDateTime.now());
 
@@ -57,7 +55,7 @@ public class AttendanceService {
     @Transactional
     public void closeWindow(UUID eventId, String organizerEmail) {
         Event event = getEvent(eventId);
-        clubAuthorizationService.requirePlatformAdminOrClubAdminOrStaff(organizerEmail, event.getClub().getId());
+        clubAuthorizationService.requireClubManager(event.getClub().getId(), organizerEmail);
 
         EventAttendanceWindow window = windowRepository.findByEventId(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance window not found"));
@@ -67,7 +65,9 @@ public class AttendanceService {
 
     @Transactional
     public AttendanceRecordDto studentCheckInByEventQr(String rawToken, String studentEmail) {
-        User student = userRepository.findByEmail(studentEmail).orElseThrow();
+        User student = userRepository.findByEmail(studentEmail).orElseThrow(
+                () -> new ResourceNotFoundException("User not found")
+        );
         if (student.getRole() != Role.STUDENT) {
             throw new ForbiddenException("Only students can check in");
         }
@@ -95,9 +95,7 @@ public class AttendanceService {
             return attendanceMapper.toDto(existing);
         }
 
-        EventAttendance attendance = eventAttendanceFactoryMapper.create(AttendanceMethod.STUDENT_SCANNED_EVENT_QR);
-        attendance.setEvent(event);
-        attendance.setUser(student);
+        EventAttendance attendance = eventAttendanceFactoryMapper.create(event,student,AttendanceMethod.STUDENT_SCANNED_EVENT_QR);
         attendance.setCheckedInBy(null);
 
         return attendanceMapper.toDto(eventAttendanceRepository.save(attendance));
@@ -106,7 +104,7 @@ public class AttendanceService {
     @Transactional
     public AttendanceRecordDto organizerCheckInStudent(UUID eventId, UUID studentId, String organizerEmail) {
         Event event = getEvent(eventId);
-        clubAuthorizationService.requirePlatformAdminOrClubAdminOrStaff(organizerEmail, event.getClub().getId());
+        clubAuthorizationService.requireClubManager(event.getClub().getId(), organizerEmail);
 
         EventAttendanceWindow window = windowRepository.findByEventId(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance window not found"));
@@ -134,22 +132,23 @@ public class AttendanceService {
 
         User organizer = userRepository.findByEmail(organizerEmail).orElseThrow();
 
-        EventAttendance attendance = eventAttendanceFactoryMapper.create(AttendanceMethod.ADMIN_SCANNED_STUDENT_QR);
-        attendance.setEvent(event);
-        attendance.setUser(student);
+        EventAttendance attendance = eventAttendanceFactoryMapper.create(event,student,AttendanceMethod.ADMIN_SCANNED_STUDENT_QR);
         attendance.setCheckedInBy(organizer);
 
         return attendanceMapper.toDto(eventAttendanceRepository.save(attendance));
     }
 
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public List<AttendanceRecordDto> listAttendance(UUID eventId, String organizerEmail) {
+    @Transactional(readOnly = true)
+    public Page<AttendanceRecordDto> listAttendance(UUID eventId, Pageable pageable, String organizerEmail) {
         Event event = getEvent(eventId);
-        clubAuthorizationService.requirePlatformAdminOrClubAdminOrStaff(organizerEmail, event.getClub().getId());
-        return eventAttendanceRepository.findByEventIdWithUserAndEvent(eventId)
-                .stream()
-                .map(attendanceMapper::toDto)
-                .collect(Collectors.toList());
+        clubAuthorizationService.requireClubManager(event.getClub().getId(), organizerEmail);
+
+        return eventAttendanceRepository.findByEventId(eventId,pageable)
+                .map(attendanceMapper::toDto);
+    }
+
+    public long countAttendance(UUID eventId) {
+        return eventAttendanceRepository.countByEventId(eventId);
     }
 
     public boolean hasAttended(UUID eventId, UUID studentId) {

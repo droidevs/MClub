@@ -1,0 +1,27 @@
+# Test profile overrides.
+#
+# Goal: allow @SpringBootTest / integration tests to boot without external dependencies.
+# We use an in-memory H2 datasource and disable dev-only external integrations.
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:mclub_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    org.springframework: WARN
+    org.hibernate: WARN
+

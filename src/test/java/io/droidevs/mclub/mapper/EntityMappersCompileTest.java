@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class EntityMappersCompileTest {
 
     @Autowired(required = false) private EventEntityMapper eventEntityMapper;
-    @Autowired(required = false) private ActivityEntityMapper activityEntityMapper;
+    @Autowired(required = false) private ActivityMapper activityEntityMapper;
     @Autowired(required = false) private ClubEntityMapper clubEntityMapper;
     @Autowired(required = false) private MembershipEntityMapper membershipEntityMapper;
     @Autowired(required = false) private ClubApplicationEntityMapper clubApplicationEntityMapper;

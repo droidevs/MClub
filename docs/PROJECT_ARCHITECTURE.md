@@ -3,7 +3,7 @@
 > Scope: This document summarizes the **current** architecture and business logic of the MClubClone Spring Boot application, based on:
 > - project structure under `src/main/java/io/droidevs/mclub`
 > - runtime configuration (`application.yml`)
-> - DB baseline migration (`src/main/resources/db/migration/V1__schema.sql`)
+> - DB baseline migration (`src/main/resources/db/migration/V1__create_user_table.sql`)
 > - existing project docs (`docs/*`, `README-api.md`, `UI-ATTENDANCE-RATING.md`)
 >
 > Note: A few existing docs contain older notes (for example: rating “only after event ends”). When code differs, this doc treats **code as source of truth**.
@@ -36,7 +36,7 @@ MClub is a club management system with:
 - Events (create, register)
 - Attendance / check-in (QR token windows + manual organizer check-in)
 - Event ratings (students rate attended events)
-- Comments (for events and activities; threaded replies + likes)
+- Comments (for events and activities; threaded repliesPreview + likes)
 - Club applications (students apply to create a club; platform admin review)
 - Optional: WhatsApp conversational assistant (RAG + tools, currently stubbed LLM)
 
@@ -54,7 +54,7 @@ The application exposes:
 - **Spring Boot 4.0.5**
 - Spring MVC (REST + view controllers)
 - Spring Data JPA + Hibernate
-- Flyway migrations (baseline `V1__schema.sql`)
+- Flyway migrations (baseline `V1__create_user_table.sql`)
 - Spring Security with **JWT** (token from header or `jwtToken` cookie)
 - Thymeleaf + Spring Security extras
 - PostgreSQL (compose file uses postgres:16-alpine)
@@ -235,14 +235,14 @@ Key rules (from `CommentService`):
 UI helpers:
 
 - `getRootPreview(...)` for event/activity detail pages (preview limited list)
-- `getThreadWithReplyPreview(...)` to keep UI compact (first N replies only)
-- `getDirectReplies(...)` for “see more replies” expansion
+- `getThreadWithReplyPreview(...)` to keep UI compact (first N repliesPreview only)
+- `getDirectReplies(...)` for “see more repliesPreview” expansion
 
 ---
 
 ## Database schema & data model
 
-Source of truth: `src/main/resources/db/migration/V1__schema.sql`.
+Source of truth: `src/main/resources/db/migration/V1__create_user_table.sql`.
 
 ### Main tables
 
@@ -449,7 +449,7 @@ Documentation source: `docs/ai-rag-whatsapp.md`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/comments/{targetType}/{targetId}` | Public (explicit in `SecurityConfig`) | Full thread (tree). |
-| GET | `/api/comments/{commentId}/replies` | Public (explicit in `SecurityConfig`) | Direct replies only. |
+| GET | `/api/comments/{commentId}/repliesPreview` | Public (explicit in `SecurityConfig`) | Direct repliesPreview only. |
 | POST | `/api/comments/{targetType}/{targetId}` | `ROLE_STUDENT` | Create root or reply (via `parentId`). |
 | POST | `/api/comments/{commentId}/reply` | `ROLE_STUDENT` | Convenience reply endpoint. |
 | POST | `/api/comments/{commentId}/like` | `ROLE_STUDENT` | Toggle like. |

@@ -12,7 +12,7 @@
             <p class="text-muted" th:text="${club.description}">Club description...</p>
 
             <div class="d-flex gap-2 flex-wrap mt-2">
-                <a class="btn btn-outline-secondary btn-sm" th:href="@{/clubs/{id}/members(id=${club.id})}">
+                <a class="btn btn-outline-secondary btn-sm" th:if="${canViewMembers}" th:href="@{/clubs/{id}/members(id=${club.id})}">
                     <i class="bi bi-people"></i> Members
                 </a>
                 <a class="btn btn-outline-warning btn-sm" th:href="@{/clubs/{id}/events(id=${club.id})}">
@@ -88,6 +88,48 @@
                         </li>
                     </ul>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 mt-4" th:if="${canViewMembers}">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Members</h5>
+
+                <a th:href="@{/clubs/{id}/members(id=${club.id})}"
+                   class="btn btn-link btn-sm">
+                    View all
+                </a>
+            </div>
+
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+
+                    <li class="list-group-item d-flex justify-content-between align-items-center"
+                        th:each="m : ${recentMembers}">
+
+                        <div>
+                            <div class="fw-semibold" th:text="${m.user.fullName}">
+                                User Name
+                            </div>
+                            <div class="text-muted small" th:text="${m.user.email}">
+                                email
+                            </div>
+                        </div>
+
+                        <span class="badge bg-success" th:text="${m.role}">
+                        ROLE
+                    </span>
+
+                    </li>
+
+                    <li class="list-group-item text-center text-muted"
+                        th:if="${#lists.isEmpty(recentMembers)}">
+                        No members yet
+                    </li>
+
+                </ul>
             </div>
         </div>
     </div>

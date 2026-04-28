@@ -45,7 +45,7 @@ class CriticalFlowsIT {
         membershipRepository.save(Membership.builder().club(club).user(admin).role(ClubRole.ADMIN).status(MembershipStatus.APPROVED).build());
 
         // Create event via service (requires club-scoped authorization). Platform admin passes.
-        EventDto create = new EventDto();
+        EventCreateRequest create = new EventCreateRequest();
         create.setClubId(club.getId());
         create.setTitle("E");
         create.setDescription("D");

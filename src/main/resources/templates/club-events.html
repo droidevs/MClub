@@ -1,54 +1,196 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head}"></head>
+
 <body th:replace="~{layout :: body(content=~{this :: content})}">
 
 <div class="container mt-4" th:fragment="content">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1"><i class="bi bi-calendar-event text-warning"></i> Events</h2>
+            <h2 class="mb-1">
+                <i class="bi bi-calendar-event text-warning"></i> Events
+            </h2>
             <div class="text-muted" th:text="${club.name}">Club</div>
         </div>
-        <a th:href="@{/clubs/{id}(id=${club.id})}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Back to Club
+
+        <a th:href="@{/clubs/{id}(id=${club.id})}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back
         </a>
     </div>
 
-    <div class="card shadow-sm border-0 rounded-4">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                    <tr>
-                        <th class="ps-4">Title</th>
-                        <th>Date</th>
-                        <th class="pe-4 text-end">Details</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="e : ${events}">
-                        <td class="ps-4 fw-semibold" th:text="${e.title}">Title</td>
-                        <td class="text-muted">
-                            <span th:text="${#temporals.format(e.startDate, 'dd MMM yyyy HH:mm')}"></span>
-                            <span class="mx-1">→</span>
-                            <span th:text="${#temporals.format(e.endDate, 'dd MMM yyyy HH:mm')}"></span>
-                        </td>
-                        <td class="pe-4 text-end">
-                            <a class="btn btn-outline-primary btn-sm" th:href="@{/events/{id}(id=${e.id})}">
-                                View
-                            </a>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-                <div class="text-center text-muted p-4" th:if="${#lists.isEmpty(events)}">
-                    No events yet.
+    <!-- SEARCH -->
+    <div class="card shadow-sm border-0 rounded-4 mb-3">
+        <div class="card-body">
+
+            <form method="get"
+                  th:action="@{/clubs/{id}/events(id=${club.id})}">
+
+                <div class="row g-2 align-items-center">
+
+                    <div class="col-md-8">
+                        <input type="text"
+                               name="q"
+                               class="form-control"
+                               placeholder="Search by title..."
+                               th:value="${query}">
+                    </div>
+
+                    <div class="col-md-4 d-flex gap-2">
+                        <button class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+
+                        <a th:href="@{/clubs/{id}/events(id=${club.id})}"
+                           class="btn btn-outline-secondary w-100">
+                            Reset
+                        </a>
+                    </div>
+
                 </div>
+            </form>
+
+            <!-- RESULT INFO -->
+            <div class="mt-2 small text-muted" th:if="${query}">
+                Found <b th:text="${eventsPage.totalElements}">0</b>
+                results for "<span th:text="${query}"></span>"
             </div>
+
         </div>
     </div>
-</div>
 
+    <!-- EVENTS TABLE -->
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Title</th>
+                    <th>Date</th>
+                    <th class="text-end pe-4">Action</th>
+                </tr>
+                </thead>
+
+                <tbody>
+
+                <tr th:each="e : ${events}"
+                    th:onclick="|window.location.href='/events/${e.id}'|"
+                    style="cursor:pointer">
+
+                    <td class="ps-4 fw-semibold">
+                        <div th:text="${e.title}">Title</div>
+                    </td>
+
+                    <td class="text-muted small">
+                        <div>
+                            <i class="bi bi-calendar"></i>
+                            <span th:text="${#temporals.format(e.startDate, 'dd MMM yyyy HH:mm')}"></span>
+                        </div>
+                        <div>
+                            <i class="bi bi-clock"></i>
+                            <span th:text="${#temporals.format(e.endDate, 'dd MMM yyyy HH:mm')}"></span>
+                        </div>
+                    </td>
+
+                    <td class="text-end pe-4">
+                        <a class="btn btn-sm btn-outline-primary"
+                           th:href="@{/events/{id}(id=${e.id})}">
+                            View
+                        </a>
+                    </td>
+
+                </tr>
+
+                </tbody>
+            </table>
+
+            <!-- EMPTY STATE -->
+            <div class="text-center py-5 text-muted"
+                 th:if="${#lists.isEmpty(events)}">
+
+                <i class="bi bi-search fs-1 d-block mb-2"></i>
+
+                <div th:if="${query}">
+                    No results for "<b th:text="${query}"></b>"
+                </div>
+
+                <div th:if="${query == null}">
+                    No events available yet
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="d-flex justify-content-between align-items-center mt-3"
+         th:if="${eventsPage.totalPages > 1}">
+
+        <!-- INFO -->
+        <div class="text-muted small">
+            Page <b th:text="${eventsPage.number + 1}"></b>
+            of <b th:text="${eventsPage.totalPages}"></b>
+        </div>
+
+        <!-- NAV -->
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+
+                <!-- PREV -->
+                <li class="page-item"
+                    th:classappend="${eventsPage.first} ? 'disabled'">
+                    <a class="page-link"
+                       th:href="@{/clubs/{id}/events(
+                           id=${club.id},
+                           page=${eventsPage.number - 1},
+                           size=${eventsPage.size},
+                           q=${query}
+                       )}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+
+                <!-- LIMITED PAGES (window of 5) -->
+                <li class="page-item"
+                    th:each="i : ${#numbers.sequence(
+                        T(java.lang.Math).max(0, eventsPage.number - 2),
+                        T(java.lang.Math).min(eventsPage.totalPages - 1, eventsPage.number + 2)
+                    )}"
+                    th:classappend="${i == eventsPage.number} ? 'active'">
+
+                    <a class="page-link"
+                       th:text="${i + 1}"
+                       th:href="@{/clubs/{id}/events(
+                           id=${club.id},
+                           page=${i},
+                           size=${eventsPage.size},
+                           q=${query}
+                       )}">
+                    </a>
+                </li>
+
+                <!-- NEXT -->
+                <li class="page-item"
+                    th:classappend="${eventsPage.last} ? 'disabled'">
+                    <a class="page-link"
+                       th:href="@{/clubs/{id}/events(
+                           id=${club.id},
+                           page=${eventsPage.number + 1},
+                           size=${eventsPage.size},
+                           q=${query}
+                       )}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
+    </div>
+
+</div>
 </body>
 </html>
-

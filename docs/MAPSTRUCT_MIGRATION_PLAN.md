@@ -141,7 +141,7 @@ This needs special care:
 - Move per-comment mapping to `CommentMapper`
 - Approach:
   - MapStruct maps `Comment -> CommentDto` for base fields
-  - service sets dynamic fields not present on entity (like `likeCount`, `likedByMe`, replies list) **only if those are not part of mapping**
+  - service sets dynamic fields not present on entity (like `likeCount`, `likedByMe`, repliesPreview list) **only if those are not part of mapping**
 
 However your rule says “no mapping in services” — to comply strictly, make the mapper accept those dynamic values via a wrapper mapping method:
 

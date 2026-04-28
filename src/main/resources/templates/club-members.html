@@ -17,18 +17,67 @@
     <div class="card shadow-sm border-0 rounded-4">
         <div class="card-body p-0">
             <ul class="list-group list-group-flush">
+
                 <li class="list-group-item d-flex justify-content-between align-items-center"
                     th:each="member : ${members}">
+
                     <div>
-                        <div class="fw-semibold" th:text="${member.userFullName}">Member Name</div>
-                        <div class="text-muted small" th:text="${member.role}">Role</div>
+                        <div class="fw-semibold" th:text="${member.userFullName}">
+                            Member Name
+                        </div>
+                        <div class="text-muted small" th:text="${member.role}">
+                            Role
+                        </div>
                     </div>
+
                 </li>
-                <li class="list-group-item text-center text-muted" th:if="${#lists.isEmpty(members)}">
+
+                <li class="list-group-item text-center text-muted"
+                    th:if="${#lists.isEmpty(members)}">
                     No approved members yet.
                 </li>
+
             </ul>
         </div>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="d-flex justify-content-center mt-3" th:if="${membersPage.totalPages > 1}">
+
+        <nav>
+            <ul class="pagination pagination-sm">
+
+                <!-- Previous -->
+                <li class="page-item" th:classappend="${membersPage.first} ? 'disabled'">
+                    <a class="page-link"
+                       th:href="@{/clubs/{id}/members(id=${club.id}, page=${membersPage.number - 1}, size=${membersPage.size})}">
+                        Previous
+                    </a>
+                </li>
+
+                <!-- Page numbers -->
+                <li class="page-item"
+                    th:each="i : ${#numbers.sequence(0, membersPage.totalPages - 1)}"
+                    th:classappend="${i == membersPage.number} ? 'active'">
+
+                    <a class="page-link"
+                       th:text="${i + 1}"
+                       th:href="@{/clubs/{id}/members(id=${club.id}, page=${i}, size=${membersPage.size})}">
+                    </a>
+
+                </li>
+
+                <!-- Next -->
+                <li class="page-item" th:classappend="${membersPage.last} ? 'disabled'">
+                    <a class="page-link"
+                       th:href="@{/clubs/{id}/members(id=${club.id}, page=${membersPage.number + 1}, size=${membersPage.size})}">
+                        Next
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
+
     </div>
 </div>
 

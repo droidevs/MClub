@@ -66,7 +66,7 @@ This document re-analyzes the **current implemented** RAG system in MClub (Whats
   - loop guard against repeating identical tool calls
 
 ### ✅ pgvector schema is present
-- Flyway migration `V2__ai_pgvector.sql` defines:
+- Flyway migration `V19__ai_pgvector.sql` defines:
   - `ai_embedding_document`
   - entity references via FKs (`event_id`, `club_id`, `activity_id`, `comment_id`)
   - HNSW index for cosine search

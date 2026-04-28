@@ -9,7 +9,7 @@
             <h2 class="display-6">Create activity</h2>
             <div class="text-muted" th:text="${club.name}">Club</div>
         </div>
-        <a class="btn btn-outline-secondary" th:href="@{/club-admin/clubs}">Back</a>
+        <a class="btn btn-outline-secondary" th:href="@{/clubs}">Back</a>
     </div>
 
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
@@ -32,9 +32,23 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">When</label>
-                <input class="form-control" type="datetime-local" th:field="*{date}" />
-                <div class="text-danger small" th:if="${#fields.hasErrors('date')}" th:errors="*{date}"></div>
+                <label class="form-label">Link to event (optional)</label>
+
+                <div id="selectedEvent" class="mt-2 text-success small"></div>
+
+                <input type="text"
+                       id="eventSearch"
+                       class="form-control"
+                       placeholder="Search event by title...">
+
+                <input type="hidden" name="eventId" id="eventId">
+
+                <div id="eventResults" class="list-group mt-2"></div>
+
+                <div class="d-flex justify-content-between mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="prevPage">Prev</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="nextPage">Next</button>
+                </div>
             </div>
 
             <div class="mb-3">
@@ -81,6 +95,60 @@
         const text = await res.text();
         alert(text || 'Could not create activity');
     });
+
+    let page = 0;
+    let query = '';
+    const clubId = document.querySelector('input[name="clubId"]').value;
+
+    async function loadEvents() {
+        const res = await fetch(`/api/events/light-search?clubId=${clubId}&q=${query}&page=${page}`);
+        const data = await res.json();
+
+        const container = document.getElementById('eventResults');
+        container.innerHTML = '';
+
+        if (data.content.length === 0) {
+            container.innerHTML = '<div class="text-muted p-2">No events found</div>';
+            return;
+        }
+
+        data.content.forEach(e => {
+            const item = document.createElement('button');
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = e.title;
+
+            item.onclick = () => {
+                document.getElementById('eventId').value = e.id;
+                document.getElementById('eventSearch').value = e.title;
+                document.getElementById('selectedEvent').textContent = "Selected: " + e.title;
+                container.innerHTML = '';
+            };
+
+            container.appendChild(item);
+        });
+    }
+
+    let debounce;
+    document.getElementById('eventSearch').addEventListener('input', (e) => {
+        clearTimeout(debounce);
+        debounce = setTimeout(() => {
+            query = e.target.value;
+            page = 0;
+            loadEvents();
+        }, 300);
+    });
+
+    // pagination
+    document.getElementById('nextPage').onclick = () => {
+        page++;
+        loadEvents();
+    };
+
+    document.getElementById('prevPage').onclick = () => {
+        if (page > 0) page--;
+        loadEvents();
+    };
+
 </script>
 
 </body>

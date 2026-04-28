@@ -9,12 +9,25 @@ import org.mapstruct.Mapping;
 public interface EventAttendanceWindowFactoryMapper {
 
     @Mapping(target = "id", ignore = true)
+
     @Mapping(target = "event", source = "event")
-    @Mapping(target = "active", ignore = true)
-    @Mapping(target = "opensBeforeStartMinutes", ignore = true)
-    @Mapping(target = "closesAfterStartMinutes", ignore = true)
+
+    // default value
+    @Mapping(target = "active", constant = "false")
+
+    // MUST be provided
+    @Mapping(source = "opensBeforeStartMinutes", target = "opensBeforeStartMinutes")
+    @Mapping(source = "closesAfterStartMinutes", target = "closesAfterStartMinutes")
+
+    // security handled in service
     @Mapping(target = "tokenHash", ignore = true)
     @Mapping(target = "tokenRotatedAt", ignore = true)
-    EventAttendanceWindow create(Event event);
+
+    @Mapping(target = "createdAt", ignore = true)
+    EventAttendanceWindow create(
+            Event event,
+            int opensBeforeStartMinutes,
+            int closesAfterStartMinutes
+    );
 }
 

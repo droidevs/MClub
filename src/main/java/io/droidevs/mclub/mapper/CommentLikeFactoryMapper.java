@@ -10,9 +10,11 @@ import org.mapstruct.Mapping;
 public interface CommentLikeFactoryMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "comment", source = "comment")
-    @Mapping(target = "user", source = "user")
     @Mapping(target = "createdAt", ignore = true)
+
+    @Mapping(source = "comment", target = "comment")
+    @Mapping(source = "user", target = "user")
+
     CommentLike create(Comment comment, User user);
 }
 

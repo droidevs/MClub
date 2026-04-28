@@ -36,7 +36,7 @@
         </div>
     </div>
 
-    <!-- Recursive fragment to render a comment + its child replies -->
+    <!-- Recursive fragment to render a comment + its child repliesPreview -->
     <div th:fragment="commentNode(c, level)">
         <div th:if="${c == null}" class="text-muted small">[missing comment]</div>
 
@@ -53,16 +53,33 @@
                      th:text="${c.createdAt != null ? #temporals.format(c.createdAt, 'dd MMM yyyy HH:mm') : ''}"></div>
             </div>
 
-            <div class="mt-2" th:text="${c.content}">Comment body</div>
+            <a th:href="@{/comments/thread/{id}(id=${c.id})}"
+               class="text-decoration-none text-dark">
+                <div class="mt-2" th:text="${c.content}"></div>
+            </a>
+
+            <!-- Root comment "Read more replies" -->
+            <button type="button"
+                    class="btn btn-link btn-sm p-0 text-decoration-none"
+                    th:if="${c.hasMoreReplies}"
+                    th:attr="data-load-root-replies=${c.id}"
+                    data-page="1">
+                Read more replies
+            </button>
+
+            <div class="mt-2" th:attr="data-root-replies-container=${c.id}"></div>
 
             <div class="text-muted small mt-2" th:if="${c.replyCount > 0}">
-                <span th:text="${c.replyCount}">0</span> replies
+                <span th:text="${c.replyCount}">0</span> repliesPreview
             </div>
 
-            <!-- Reply preview: top 1 reply is included by the controller/service -->
-            <div class="mt-3" th:if="${c.replies != null and !#lists.isEmpty(c.replies)}">
+            <div class="mt-3"
+                 th:if="${c.repliesPreview != null and !#lists.isEmpty(c.repliesPreview)}">
+
                 <div class="border-start ps-3">
-                    <div th:each="r : ${c.replies}" class="mb-2">
+
+                    <!-- existing first 3 replies -->
+                    <div th:each="r : ${c.repliesPreview}" class="mb-2">
                         <div class="d-flex justify-content-between">
                             <div class="fw-semibold small" th:text="${#strings.isEmpty(r.authorFullName) ? 'Unknown' : r.authorFullName}">User</div>
                             <div class="text-muted small" th:text="${r.createdAt != null ? #temporals.format(r.createdAt, 'dd MMM yyyy HH:mm') : ''}"></div>
@@ -70,16 +87,16 @@
                         <div class="small mt-1" th:text="${r.content}">Reply body</div>
                     </div>
 
-                    <!-- Fetch-and-expand replies -->
+                    <!-- Load more replies (pagination) -->
                     <button type="button"
                             class="btn btn-link btn-sm p-0 text-decoration-none"
                             th:if="${c.hasMoreReplies}"
-                            th:attr="data-toggle-replies=${c.id}">
-                        See more replies
+                            th:attr="data-load-replies=${c.id}"
+                            data-page="1">
+                        Load more replies
                     </button>
 
-                    <!-- This container will be populated by JS after fetching from /api/comments/{id}/replies -->
-                    <div class="mt-2 d-none" th:attr="data-replies-container=${c.id}"></div>
+                    <<div class="mt-2" th:attr="data-replies-container=${c.id}"></div>
                 </div>
             </div>
 
@@ -97,7 +114,7 @@
             </div>
         </div>
 
-        <!-- IMPORTANT: for this page we intentionally do NOT recursively render deeper replies here.
+        <!-- IMPORTANT: for this page we intentionally do NOT recursively render deeper repliesPreview here.
              The controller returns only a preview (top 1 reply) and we keep the UI predictable.
              Full threads can be implemented later with server-side fetching. -->
     </div>
@@ -231,40 +248,77 @@
             });
         });
 
-        // Expand/collapse replies (children only) via REST API.
         document.addEventListener('click', async (e) => {
-            const btn = e.target.closest('[data-toggle-replies]');
+            const btn = e.target.closest('[data-load-root-replies]');
             if (!btn) return;
 
-            const commentId = btn.getAttribute('data-toggle-replies');
-            const container = document.querySelector(`[data-replies-container="${commentId}"]`);
-            if (!container) return;
+            const commentId = btn.dataset.loadRootReplies;
+            const page = parseInt(btn.dataset.page || "1");
 
-            // Toggle if already loaded
-            if (!container.classList.contains('d-none')) {
-                container.classList.add('d-none');
-                btn.textContent = 'See more replies';
-                return;
-            }
+            const container = document.querySelector(`[data-root-replies-container="${commentId}"]`);
 
             btn.disabled = true;
-            const oldText = btn.textContent;
-            btn.textContent = 'Loading…';
+            btn.textContent = "Loading...";
 
             try {
-                const replies = await fetchJson(`/api/comments/${encodeURIComponent(commentId)}/replies`);
-                if (!replies || replies.length === 0) {
-                    container.innerHTML = `<div class="text-muted small">No more replies.</div>`;
-                } else {
-                    container.innerHTML = replies.map(renderReply).join('');
+                const data = await fetchJson(`/api/comments/${commentId}/replies?page=${page}`);
+
+                if (!data || data.content.length === 0) {
+                    btn.remove();
+                    return;
                 }
-                container.classList.remove('d-none');
-                btn.textContent = 'Hide replies';
+
+                container.insertAdjacentHTML(
+                    "beforeend",
+                    data.content.map(renderReply).join("")
+                );
+
+                btn.dataset.page = page + 1;
+
+                if (data.last) {
+                    btn.remove();
+                } else {
+                    btn.textContent = "Read more replies";
+                    btn.disabled = false;
+                }
+
             } catch (err) {
-                container.innerHTML = `<div class="text-danger small">Could not load replies.</div>`;
-                container.classList.remove('d-none');
-                btn.textContent = oldText;
-            } finally {
+                btn.textContent = "Error loading";
+                btn.disabled = false;
+            }
+        });
+
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-load-replies]');
+            if (!btn) return;
+
+            const parentId = btn.dataset.loadReplies;
+            const page = parseInt(btn.dataset.page || "1");
+
+            const container = document.querySelector(`[data-replies-container="${parentId}"]`);
+
+            btn.disabled = true;
+            btn.textContent = "Loading...";
+
+            try {
+                const data = await fetchJson(`/api/comments/replies/${parentId}?page=${page}`);
+
+                container.insertAdjacentHTML(
+                    "beforeend",
+                    data.content.map(renderReply).join("")
+                );
+
+                btn.dataset.page = page + 1;
+
+                if (data.last) {
+                    btn.remove();
+                } else {
+                    btn.textContent = "Load more replies";
+                    btn.disabled = false;
+                }
+
+            } catch (err) {
+                btn.textContent = "Error";
                 btn.disabled = false;
             }
         });

@@ -21,29 +21,28 @@ public class ClubAuthorizationService {
     private final UserRepository userRepository;
     private final MembershipRepository membershipRepository;
 
+
+    public void requireClubManager(UUID club, String email) {
+        if (!canManageClub(club, email)) {
+            throw new ForbiddenException("Not allowed for this club");
+        }
+    }
+
+    public boolean canManageClub(UUID clubId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail).orElseThrow();
+        if(user.getRole() == Role.PLATFORM_ADMIN)
+            return true;
+        else {
+            return membershipRepository.findByUserIdAndClubId(user.getId(), clubId)
+                    .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
+                    .map(m -> m.getRole() == ClubRole.ADMIN || m.getRole() == ClubRole.STAFF)
+                    .orElse(false);
+        }
+    }
+
     public boolean isPlatformAdmin(String email) {
         User user = userRepository.findByEmail(email).orElseThrow();
         return user.getRole() == Role.PLATFORM_ADMIN;
     }
 
-    public void requirePlatformAdminOrClubRole(String email, UUID clubId, Set<ClubRole> allowedRoles) {
-        if (isPlatformAdmin(email)) {
-            return;
-        }
-
-        User user = userRepository.findByEmail(email).orElseThrow();
-
-        boolean ok = membershipRepository.findByUserIdAndClubId(user.getId(), clubId)
-                .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
-                .map(m -> allowedRoles.contains(m.getRole()))
-                .orElse(false);
-
-        if (!ok) {
-            throw new ForbiddenException("Not allowed for this club");
-        }
-    }
-
-    public void requirePlatformAdminOrClubAdminOrStaff(String email, UUID clubId) {
-        requirePlatformAdminOrClubRole(email, clubId, EnumSet.of(ClubRole.ADMIN, ClubRole.STAFF));
-    }
 }

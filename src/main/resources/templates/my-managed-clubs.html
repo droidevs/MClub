@@ -17,27 +17,27 @@
                     <p class="card-text text-muted" th:text="${club.description}"></p>
 
                     <div class="d-flex gap-2 flex-wrap mt-3">
-                        <a th:href="@{/club-admin/clubs/{id}/memberships(id=${club.id})}"
+                        <a th:href="@{/clubs/{id}/memberships(id=${club.id})}"
                            class="btn btn-outline-primary btn-sm rounded-pill">
                             <i class="bi bi-inbox"></i> Applications
                         </a>
 
-                        <a th:href="@{/club-admin/clubs/{id}/members(id=${club.id})}"
+                        <a th:href="@{/clubs/{id}/manage-members(id=${club.id})}"
                            class="btn btn-outline-secondary btn-sm rounded-pill">
                             <i class="bi bi-people"></i> Members
                         </a>
 
-                        <a th:href="@{/club-admin/clubs/{id}/attendance(id=${club.id})}"
+                        <a th:href="@{/clubs/{id}/attendance(id=${club.id})}"
                            class="btn btn-outline-success btn-sm rounded-pill">
                             <i class="bi bi-qr-code-scan"></i> Attendance
                         </a>
 
-                        <a th:href="@{/club-admin/clubs/{id}/events/new(id=${club.id})}"
+                        <a th:href="@{/clubs/{id}/events/new(id=${club.id})}"
                            class="btn btn-outline-warning btn-sm rounded-pill">
                             <i class="bi bi-calendar-plus"></i> New event
                         </a>
 
-                        <a th:href="@{/club-admin/clubs/{id}/activities/new(id=${club.id})}"
+                        <a th:href="@{/clubs/{id}/activities/new(id=${club.id})}"
                            class="btn btn-outline-dark btn-sm rounded-pill">
                             <i class="bi bi-plus-circle"></i> New activity
                         </a>
@@ -50,6 +50,50 @@
             <div class="alert alert-info">
                 You do not manage any clubs currently. Submit a club application to get started.
             </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-4"
+             th:if="${clubsPage.totalPages > 1}">
+
+            <!-- Page info -->
+            <div class="text-muted small">
+                Page <span th:text="${clubsPage.number + 1}"></span>
+                of <span th:text="${clubsPage.totalPages}"></span>
+            </div>
+
+            <!-- Pagination controls -->
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+
+                    <!-- Previous -->
+                    <li class="page-item" th:classappend="${!clubsPage.hasPrevious()} ? 'disabled'">
+                        <a class="page-link rounded-pill"
+                           th:href="@{/clubs(page=${clubsPage.number - 1}, size=${clubsPage.size})}">
+                            ←
+                        </a>
+                    </li>
+
+                    <!-- Page numbers -->
+                    <li class="page-item"
+                        th:each="i : ${#numbers.sequence(0, clubsPage.totalPages - 1)}"
+                        th:classappend="${i == clubsPage.number} ? 'active'">
+                        <a class="page-link rounded-pill"
+                           th:href="@{/clubs(page=${i}, size=${clubsPage.size})}"
+                           th:text="${i + 1}">
+                        </a>
+                    </li>
+
+                    <!-- Next -->
+                    <li class="page-item" th:classappend="${!clubsPage.hasNext()} ? 'disabled'">
+                        <a class="page-link rounded-pill"
+                           th:href="@{/clubs(page=${clubsPage.number + 1}, size=${clubsPage.size})}">
+                            →
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
         </div>
     </div>
 </div>

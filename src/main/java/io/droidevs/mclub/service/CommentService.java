@@ -3,11 +3,16 @@ package io.droidevs.mclub.service;
 import io.droidevs.mclub.domain.*;
 import io.droidevs.mclub.dto.CommentCreateRequest;
 import io.droidevs.mclub.dto.CommentDto;
+import io.droidevs.mclub.dto.CommentPreviewDto;
 import io.droidevs.mclub.exception.ForbiddenException;
 import io.droidevs.mclub.mapper.CommentMapper;
 import io.droidevs.mclub.repository.*;
 import io.droidevs.mclub.security.Role;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,153 +34,277 @@ public class CommentService {
     private final io.droidevs.mclub.mapper.CommentFactoryMapper commentFactoryMapper;
     private final io.droidevs.mclub.mapper.CommentLikeFactoryMapper commentLikeFactoryMapper;
 
+
     @Transactional(readOnly = true)
-    public List<CommentDto> getThread(CommentTargetType targetType, UUID targetId, String currentUserEmail) {
-        User me = currentUserEmail != null ? userRepository.findByEmail(currentUserEmail).orElse(null) : null;
+    public Comment getCommentEntity(UUID commentId) {
+        return commentRepository.findById(commentId).orElseThrow();
+    }
+
+    public CommentDto getComment(UUID commentId) {
+        return commentRepository.findById(commentId)
+                .map(c -> {
+                    long likeCount = commentLikeRepository.countByCommentId(c.getId());
+                    boolean likedByMe = false; // This method doesn't know the user, so we can't determine this
+                    int replyCount = commentRepository.countCommentByParentId(c.getId());
+                    return commentMapper.toDto(c, likeCount, likedByMe, replyCount, false);
+                })
+                .orElseThrow();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CommentDto> getThread(
+            CommentTargetType targetType,
+            UUID targetId,
+            Pageable pageable,
+            String currentUserEmail
+    ) {
+
+        User me = currentUserEmail != null
+                ? userRepository.findByEmail(currentUserEmail).orElse(null)
+                : null;
+
         UUID myId = me != null ? me.getId() : null;
 
-        // Fetch all comments for target with author eagerly loaded
-        List<Comment> all = commentRepository.findThreadWithAuthor(targetType, targetId);
+        // 1. ROOT COMMENTS (paged)
+        Page<Comment> rootPage = commentRepository.findLatestComments(targetType, targetId, pageable);
+        List<Comment> roots = rootPage.getContent();
 
-        // Precompute like counts + likedByMe (simple approach via per-comment lookups; OK for small sizes).
-        // If you need scale, we can replace with aggregate queries.
+        if (roots.isEmpty()) {
+            return rootPage.map(c -> commentMapper.toDto(c, 0L, false, 0, false));
+        }
+
+        List<UUID> rootIds = roots.stream().map(Comment::getId).toList();
+
+        // 2. REPLIES (only for roots)
+        List<Comment> replies = commentRepository.findRepliesByParentIds(rootIds);
+
+        // 3. FLAT LIST FOR LIKE CALCULATION
+        List<Comment> all = new ArrayList<>();
+        all.addAll(roots);
+        all.addAll(replies);
+
+        // 4. BULK LIKES (replace N+1)
         Map<UUID, Long> likeCounts = new HashMap<>();
-        Set<UUID> likedIdsByMe = new HashSet<>();
+        if (!all.isEmpty()) {
+            List<UUID> allIds = all.stream().map(Comment::getId).toList();
 
-        for (Comment c : all) {
-            likeCounts.put(c.getId(), commentLikeRepository.countByCommentId(c.getId()));
-            if (myId != null && commentLikeRepository.findByCommentIdAndUserId(c.getId(), myId).isPresent()) {
-                likedIdsByMe.add(c.getId());
+            for (Object[] row : commentLikeRepository.countLikesBulk(allIds)) {
+                likeCounts.put((UUID) row[0], (Long) row[1]);
             }
         }
 
-        Map<UUID, CommentDto> dtoById = all.stream()
-                .collect(Collectors.toMap(Comment::getId,
-                        c -> commentMapper.toDto(c, likeCounts.getOrDefault(c.getId(), 0L), likedIdsByMe.contains(c.getId()))));
+        Set<UUID> likedByMe = commentLikeRepository.findLikedCommentIds(myId, likeCounts.keySet());
 
-        // Root list
-        List<CommentDto> roots = new ArrayList<>();
+        // 5. DTO MAP
+        Map<UUID, CommentDto> dtoMap = new HashMap<>();
+
         for (Comment c : all) {
-            CommentDto dto = dtoById.get(c.getId());
-            if (c.getParentId() == null) {
-                roots.add(dto);
+            dtoMap.put(c.getId(),
+                    commentMapper.toDto(
+                            c,
+                            likeCounts.getOrDefault(c.getId(), 0L),
+                            likedByMe.contains(c.getId()), 0, false
+                    )
+            );
+        }
+
+        // 6. GROUP REPLIES
+        Map<UUID, List<CommentDto>> repliesByParent = replies.stream()
+                .map(r -> dtoMap.get(r.getId()))
+                .collect(Collectors.groupingBy(dto -> dto.getParentId()));
+
+        // 7. BUILD FINAL TREE (ONLY ROOTS + 3 REPLIES)
+        List<CommentDto> result = new ArrayList<>();
+
+        for (Comment root : roots) {
+
+            CommentDto rootDto = dtoMap.get(root.getId());
+
+            List<CommentDto> children = repliesByParent.getOrDefault(root.getId(), List.of());
+
+            rootDto.setReplyCount(children.size());
+            rootDto.setHasMoreReplies(children.size() > 3);
+
+            // 🔥 LIMIT TO 3 ONLY
+            rootDto.setRepliesPreview(children.stream()
+                    .limit(3)
+                    .toList());
+
+            result.add(rootDto);
+        }
+
+        return new PageImpl<>(result, pageable, rootPage.getTotalElements());
+    }
+
+
+    @Transactional(readOnly = true)
+    public CommentPreviewDto getPreview(
+            CommentTargetType targetType,
+            UUID targetId,
+            String currentUserEmail
+    ) {
+
+        User me = currentUserEmail != null
+                ? userRepository.findByEmail(currentUserEmail).orElse(null)
+                : null;
+
+        UUID myId = me != null ? me.getId() : null;
+
+        // 1. COUNTS
+        long totalComments = commentRepository.countAllByTarget(targetType, targetId);
+        long totalReplies = commentRepository.countRepliesByTarget(targetType, targetId);
+
+        // 2. LATEST COMMENTS (limit 3)
+        Page<Comment> latestPage = commentRepository.findLatestComments(
+                targetType,
+                targetId,
+                PageRequest.of(0, 3)
+        );
+        List<Comment> latest = latestPage.getContent();
+
+        Set<UUID> ids = latest.stream().map(Comment::getId).collect(Collectors.toSet());
+
+        Map<UUID, Long> likeCounts = new HashMap<>();
+        Set<UUID> likedByMe;
+
+        if (!ids.isEmpty()) {
+            for (Object[] row : commentLikeRepository.countLikesBulk(ids.stream().toList())) {
+                likeCounts.put((UUID) row[0], (Long) row[1]);
+            }
+
+            if (myId != null) {
+                likedByMe = commentLikeRepository.findLikedCommentIds(myId, ids);
             } else {
-                CommentDto parent = dtoById.get(c.getParentId());
-                if (parent != null) {
-                    // replies list is initialized by mapper
-                    parent.getReplies().add(dto);
-                } else {
-                    // Orphan reply: treat as root
-                    roots.add(dto);
-                }
+                likedByMe = new HashSet<>();
             }
+        } else {
+            likedByMe = new HashSet<>();
         }
 
-        // Populate replyCount/hasMoreReplies for the full thread model too
-        for (CommentDto r : roots) {
-            populateReplyMetaRecursive(r);
-        }
+        List<CommentDto> latestDtos = latest.stream()
+                .map(c -> commentMapper.toDto(
+                        c,
+                        likeCounts.getOrDefault(c.getId(), 0L),
+                        likedByMe.contains(c.getId()), 0, false
+                ))
+                .toList();
 
-        return roots;
+        long totalLikes = likeCounts.values()
+                .stream()
+                .mapToLong(Long::longValue)
+                .sum();
+
+        CommentPreviewDto dto = new CommentPreviewDto(
+                totalComments,
+                totalReplies,
+                totalLikes,
+                latestDtos,
+                latestDtos.isEmpty() ? null : latestDtos.get(0)
+        );
+
+        return dto;
     }
 
-    /**
-     * Preview helper for detail pages: returns the newest root comments, each with reply metadata.
-     * Replies are not populated (only replyCount/hasMoreReplies for UI text).
-     */
-    @Transactional(readOnly = true)
-    public List<CommentDto> getRootPreview(CommentTargetType targetType,
-                                          UUID targetId,
-                                          String currentUserEmail,
-                                          int limit) {
-        List<CommentDto> roots = getThread(targetType, targetId, currentUserEmail);
-        // newest first for preview (detail pages typically show latest activity)
-        roots.sort(Comparator.comparing(CommentDto::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
-
-        List<CommentDto> out = roots.stream().limit(Math.max(0, limit)).toList();
-        // Ensure replies aren't rendered in preview (we show only replyCount text)
-        for (CommentDto c : out) {
-            c.setReplies(Collections.emptyList());
-        }
-        return out;
-    }
-
-    /**
-     * Returns a thread where each root comment shows only a preview of its first reply.
-     * Nested replies beyond that are not included to keep UI compact.
-     */
-    @Transactional(readOnly = true)
-    public List<CommentDto> getThreadWithReplyPreview(CommentTargetType targetType,
-                                                      UUID targetId,
-                                                      String currentUserEmail,
-                                                      int repliesPreviewLimitPerRoot) {
-        List<CommentDto> roots = getThread(targetType, targetId, currentUserEmail);
-
-        // For each root comment: keep only the first N direct replies, drop deeper nesting.
-        for (CommentDto root : roots) {
-            List<CommentDto> direct = root.getReplies() != null ? root.getReplies() : Collections.emptyList();
-            root.setReplyCount(direct.size());
-            root.setHasMoreReplies(direct.size() > repliesPreviewLimitPerRoot);
-
-            List<CommentDto> trimmed = direct.stream().limit(Math.max(0, repliesPreviewLimitPerRoot)).toList();
-            // Remove deeper nesting from the preview replies
-            List<CommentDto> cleaned = new ArrayList<>();
-            for (CommentDto r : trimmed) {
-                r.setReplies(Collections.emptyList());
-                r.setReplyCount(0);
-                r.setHasMoreReplies(false);
-                cleaned.add(r);
-            }
-            root.setReplies(cleaned);
-        }
-
-        return roots;
-    }
 
     /**
      * Load ALL direct replies for a given parent comment (children only; no deep nesting).
      * This powers the "See more replies" expansion on the comments page.
      */
     @Transactional(readOnly = true)
-    public List<CommentDto> getDirectReplies(UUID parentCommentId, String currentUserEmail) {
-        User me = currentUserEmail != null ? userRepository.findByEmail(currentUserEmail).orElse(null) : null;
+    public Page<CommentDto> getDirectReplies(
+            UUID parentCommentId,
+            Pageable pageable,
+            String currentUserEmail
+    ) {
+
+        User me = currentUserEmail != null
+                ? userRepository.findByEmail(currentUserEmail).orElse(null)
+                : null;
+
         UUID myId = me != null ? me.getId() : null;
 
-        List<Comment> replies = commentRepository.findRepliesWithAuthor(parentCommentId);
+        // 1. PAGINATED DIRECT REPLIES
+        Page<Comment> replyPage =
+                commentRepository.findReplies(parentCommentId, pageable);
 
+        List<Comment> replies = replyPage.getContent();
+
+        if (replies.isEmpty()) {
+            return replyPage.map(c -> commentMapper.toDto(c, 0L, false, 0, false));
+        }
+
+        // 2. SUB REPLIES (ONLY FOR THESE REPLIES)
+        List<UUID> replyIds = replies.stream()
+                .map(Comment::getId)
+                .toList();
+
+        List<Comment> subReplies =
+                commentRepository.findRepliesByParentIds(replyIds);
+
+        // 3. FLAT LIST
+        List<Comment> all = new ArrayList<>();
+        all.addAll(replies);
+        all.addAll(subReplies);
+
+        // 4. BULK LIKES (NO N+1)
         Map<UUID, Long> likeCounts = new HashMap<>();
-        Set<UUID> likedIdsByMe = new HashSet<>();
-        for (Comment c : replies) {
-            likeCounts.put(c.getId(), commentLikeRepository.countByCommentId(c.getId()));
-            if (myId != null && commentLikeRepository.findByCommentIdAndUserId(c.getId(), myId).isPresent()) {
-                likedIdsByMe.add(c.getId());
+        Set<UUID> likedByMe = new HashSet<>();
+
+        if (!all.isEmpty()) {
+            List<UUID> ids = all.stream().map(Comment::getId).toList();
+
+            for (Object[] row : commentLikeRepository.countLikesBulk(ids)) {
+                likeCounts.put((UUID) row[0], (Long) row[1]);
+            }
+
+            if (myId != null) {
+                for (UUID id : ids) {
+                    if (commentLikeRepository.findByCommentIdAndUserId(id, myId).isPresent()) {
+                        likedByMe.add(id);
+                    }
+                }
             }
         }
 
-        List<CommentDto> out = replies.stream()
-                .map(c -> commentMapper.toDto(c, likeCounts.getOrDefault(c.getId(), 0L), likedIdsByMe.contains(c.getId())))
-                .collect(Collectors.toList());
+        // 5. DTO MAP
+        Map<UUID, CommentDto> dtoMap = new HashMap<>();
 
-        // Ensure child-of-reply lists are empty for this endpoint to keep UI bounded.
-        for (CommentDto dto : out) {
-            dto.setReplies(Collections.emptyList());
-            dto.setReplyCount(0);
-            dto.setHasMoreReplies(false);
+        for (Comment c : all) {
+            dtoMap.put(c.getId(),
+                    commentMapper.toDto(
+                            c,
+                            likeCounts.getOrDefault(c.getId(), 0L),
+                            likedByMe.contains(c.getId()), 0, false
+                    )
+            );
         }
 
-        return out;
-    }
+        // 6. GROUP SUB REPLIES
+        Map<UUID, List<CommentDto>> subByParent = subReplies.stream()
+                .map(c -> dtoMap.get(c.getId()))
+                .collect(Collectors.groupingBy(CommentDto::getParentId));
 
-    private void populateReplyMetaRecursive(CommentDto node) {
-        if (node == null) {
-            return;
+        // 7. BUILD RESPONSE
+        List<CommentDto> result = new ArrayList<>();
+
+        for (Comment reply : replies) {
+
+            CommentDto dto = dtoMap.get(reply.getId());
+
+            List<CommentDto> children =
+                    subByParent.getOrDefault(reply.getId(), List.of());
+
+            dto.setReplyCount(children.size());
+            dto.setHasMoreReplies(children.size() > 3);
+
+            dto.setRepliesPreview(children.stream()
+                    .limit(3)
+                    .toList());
+
+            result.add(dto);
         }
-        List<CommentDto> replies = node.getReplies() != null ? node.getReplies() : Collections.emptyList();
-        node.setReplyCount(replies.size());
-        node.setHasMoreReplies(false);
-        for (CommentDto r : replies) {
-            populateReplyMetaRecursive(r);
-        }
+
+        return new PageImpl<>(result, pageable, replyPage.getTotalElements());
     }
 
     @Transactional
@@ -207,7 +336,7 @@ public class CommentService {
         comment.setDeleted(false);
 
         Comment saved = commentRepository.save(comment);
-        return commentMapper.toDto(saved, 0L, false);
+        return commentMapper.toDto(saved, 0L, false, 0, false);
     }
 
     @Transactional

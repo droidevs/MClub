@@ -9,7 +9,7 @@
             <h2 class="display-6">Create event</h2>
             <div class="text-muted" th:text="${club.name}">Club</div>
         </div>
-        <a class="btn btn-outline-secondary" th:href="@{/club-admin/clubs}">Back</a>
+        <a class="btn btn-outline-secondary" th:href="@{/clubs}">Back</a>
     </div>
 
     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
@@ -130,7 +130,7 @@
                 });
 
                 if (res.ok) {
-                    window.location.href = '/club-admin/clubs';
+                    window.location.href = '/clubs';
                     return;
                 }
 

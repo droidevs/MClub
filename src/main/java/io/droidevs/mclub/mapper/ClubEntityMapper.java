@@ -11,6 +11,11 @@ public interface ClubEntityMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "memberships", ignore = true)
+    @Mapping(target = "events", ignore = true)
+    @Mapping(target = "activities", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
     Club toEntity(ClubDto dto);
+
 }
 

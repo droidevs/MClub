@@ -13,6 +13,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(CommentController.class)
 @AutoConfigureMockMvc // enable Spring Security filters
-@Import(io.droidevs.mclub.security.SecurityConfig.class)
+@Import({io.droidevs.mclub.security.SecurityConfig.class, TestControllerAdviceMocks.class})
 class CommentControllerTest {
 
     @Autowired
@@ -37,7 +39,7 @@ class CommentControllerTest {
     @Test
     void getComments_shouldPermitAnonymous() throws Exception {
         UUID targetId = UUID.randomUUID();
-        when(commentService.getThread(CommentTargetType.EVENT, targetId, null)).thenReturn(List.of());
+        when(commentService.getThread(CommentTargetType.EVENT, targetId, Pageable.unpaged(), null)).thenReturn(Page.empty());
 
         mvc.perform(get("/api/comments/EVENT/{id}", targetId))
                 .andExpect(status().isOk());

@@ -26,22 +26,94 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="a : ${activities}">
-                        <td class="ps-4 fw-semibold" th:text="${a.title}">Title</td>
-                        <td class="text-muted" th:text="${#temporals.format(a.date, 'dd MMM yyyy HH:mm')}"></td>
-                        <td>
-                            <a th:if="${a.eventId != null}" class="btn btn-outline-primary btn-sm"
-                               th:href="@{/events/{id}(id=${a.eventId})}">View event</a>
-                            <span class="text-muted" th:if="${a.eventId == null}">—</span>
+                    <tr th:each="a : ${activitiesPage.content}"
+                        class="activity-row"
+                        th:onclick="|window.location.href='@{/activities/{id}(id=${a.id})}'|"
+                        style="cursor: pointer;">
+
+                        <td class="ps-4">
+                            <div class="fw-semibold" th:text="${a.title}">Title</div>
+                            <small class="text-muted">
+                                Created <span th:text="${#temporals.format(a.createdAt, 'dd MMM yyyy')}"></span>
+                            </small>
                         </td>
+
+                        <td class="text-muted">
+                            <i class="bi bi-calendar-event me-1"></i>
+                            <span th:text="${#temporals.format(a.date, 'dd MMM yyyy HH:mm')}"></span>
+                        </td>
+
+                        <td class="text-end pe-4">
+                            <i class="bi bi-chevron-right text-muted"></i>
+                        </td>
+
                     </tr>
                     </tbody>
                 </table>
-                <div class="text-center text-muted p-4" th:if="${#lists.isEmpty(activities)}">
+                <div class="text-center text-muted p-4" th:if="${activitiesPage.totalElements}">
                     No activities yet.
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-between align-items-center mt-3"
+         th:if="${activitiesPage.totalPages > 1}">
+
+        <!-- Page info -->
+        <div class="text-muted small">
+            Page <span th:text="${activitiesPage.number + 1}"></span>
+            of <span th:text="${activitiesPage.totalPages}"></span>
+        </div>
+
+        <!-- Navigation -->
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+
+                <!-- Previous -->
+                <li class="page-item"
+                    th:classappend="${activitiesPage.first} ? 'disabled'">
+                    <a class="page-link"
+                       th:href="@{/clubs/{id}/activities(
+                        id=${club.id},
+                        page=${activitiesPage.number - 1},
+                        size=${activitiesPage.size}
+                   )}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+
+                <!-- Page numbers -->
+                <li class="page-item"
+                    th:each="i : ${#numbers.sequence(0, activitiesPage.totalPages - 1)}"
+                    th:classappend="${i == activitiesPage.number} ? 'active'">
+
+                    <a class="page-link"
+                       th:href="@{/clubs/{id}/activities(
+                        id=${club.id},
+                        page=${i},
+                        size=${activitiesPage.size}
+                   )}"
+                       th:text="${i + 1}">
+                    </a>
+                </li>
+
+                <!-- Next -->
+                <li class="page-item"
+                    th:classappend="${activitiesPage.last} ? 'disabled'">
+                    <a class="page-link"
+                       th:href="@{/clubs/{id}/activities(
+                        id=${club.id},
+                        page=${activitiesPage.number + 1},
+                        size=${activitiesPage.size}
+                   )}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
     </div>
 </div>
 

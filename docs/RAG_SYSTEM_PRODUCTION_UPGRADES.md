@@ -339,7 +339,7 @@ User: "Register me for the AI workshop tomorrow"
 2) LLM calls tool `search_events` **(recommended new tool)** OR selects eventId directly
 3) if multiple matches:
    - assistant asks: "Which one? 1) ... 2) ..."
-4) user replies: "1"
+4) user repliesPreview: "1"
 5) tool: `register_event(eventId=...)`
 6) assistant confirms
 

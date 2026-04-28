@@ -5,6 +5,9 @@ import io.droidevs.mclub.dto.*;
 import io.droidevs.mclub.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -18,19 +21,37 @@ import java.util.UUID;
 public class EventController {
     private final EventService eventService;
     private final RegistrationService registrationService;
-    private final io.droidevs.mclub.mapper.EventCreateRequestMapper eventCreateRequestMapper;
 
     @PostMapping
     public ResponseEntity<EventDto> createEvent(@Valid @RequestBody EventCreateRequest request, Authentication auth) {
         if (auth == null) {
             return ResponseEntity.status(401).build();
         }
-        return ResponseEntity.ok(eventService.createEvent(eventCreateRequestMapper.toDto(request), auth.getName()));
+        return ResponseEntity.ok(eventService.createEvent(request, auth.getName()));
     }
 
     @GetMapping("/club/{clubId}")
-    public ResponseEntity<List<EventDto>> getEventsByClub(@PathVariable UUID clubId) {
-        return ResponseEntity.ok(eventService.getEventsByClub(clubId));
+    public ResponseEntity<Page<EventDto>> getEventsByClub(@PathVariable UUID clubId,
+                                                          @PageableDefault(size = 10) Pageable pageable) {
+        return ResponseEntity.ok(eventService.getEventsByClub(clubId, pageable));
+    }
+
+    @GetMapping("/search")
+    public Page<EventDto> searchEvents(
+            @RequestParam UUID clubId,
+            @RequestParam(required = false) String q,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return eventService.searchEvents(clubId, q, pageable);
+    }
+
+    @GetMapping("/light-search")
+    public Page<EventSummary> lightSearchEvents(
+            @RequestParam UUID clubId,
+            @RequestParam(required = false) String q,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return eventService.searchEventsLight(clubId, q, pageable);
     }
 
     @PostMapping("/{eventId}/register")

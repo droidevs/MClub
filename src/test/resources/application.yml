@@ -18,3 +18,6 @@ mclub:
   ai:
     openai:
       enabled: false
+    embedding:
+      inmemory:
+        enabled: true
