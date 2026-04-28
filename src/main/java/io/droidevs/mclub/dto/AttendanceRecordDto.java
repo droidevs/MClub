@@ -9,6 +9,7 @@ public class AttendanceRecordDto {
     private UUID userId;
     private String userEmail;
     private LocalDateTime checkedInAt;
+    private UUID checkedInById;
     private String method;
 
     public UUID getId() {
@@ -21,6 +22,10 @@ public class AttendanceRecordDto {
 
     public UUID getEventId() {
         return eventId;
+    }
+
+    public void setCheckedInById(UUID checkedInById) {
+        this.checkedInById = checkedInById;
     }
 
     public void setEventId(UUID eventId) {
@@ -46,6 +51,11 @@ public class AttendanceRecordDto {
     public LocalDateTime getCheckedInAt() {
         return checkedInAt;
     }
+
+    public UUID getCheckedInById() {
+        return checkedInById;
+    }
+
 
     public void setCheckedInAt(LocalDateTime checkedInAt) {
         this.checkedInAt = checkedInAt;

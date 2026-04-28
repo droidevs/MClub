@@ -18,8 +18,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
-@AutoConfigureMockMvc(addFilters = false)
-@Import(io.droidevs.mclub.security.SecurityConfig.class)
+@AutoConfigureMockMvc // enable Spring Security filters
+@Import({io.droidevs.mclub.security.SecurityConfig.class, TestControllerAdviceMocks.class})
 class AuthControllerTest {
 
     @Autowired
@@ -48,4 +48,3 @@ class AuthControllerTest {
         verify(authService).registerUser(any());
     }
 }
-

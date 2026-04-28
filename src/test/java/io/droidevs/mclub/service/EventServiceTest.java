@@ -3,8 +3,10 @@ package io.droidevs.mclub.service;
 import io.droidevs.mclub.domain.Club;
 import io.droidevs.mclub.domain.Event;
 import io.droidevs.mclub.domain.User;
+import io.droidevs.mclub.dto.EventCreateRequest;
 import io.droidevs.mclub.dto.EventDto;
 import io.droidevs.mclub.exception.ResourceNotFoundException;
+import io.droidevs.mclub.mapper.EventCreateRequestMapper;
 import io.droidevs.mclub.mapper.EventEntityMapper;
 import io.droidevs.mclub.mapper.EventMapper;
 import io.droidevs.mclub.repository.ClubRepository;
@@ -32,7 +34,7 @@ class EventServiceTest {
     @Mock private ClubRepository clubRepository;
     @Mock private UserRepository userRepository;
     @Mock private EventMapper eventMapper;
-    @Mock private EventEntityMapper eventEntityMapper;
+    @Mock private EventCreateRequestMapper eventCreateRequestMapper;
     @Mock private ClubAuthorizationService clubAuthorizationService;
 
     @InjectMocks
@@ -49,7 +51,7 @@ class EventServiceTest {
 
     @Test
     void shouldThrow_whenClubIdMissing() {
-        EventDto dto = new EventDto();
+        EventCreateRequest dto = new EventCreateRequest();
         dto.setTitle("t");
         dto.setDescription("d");
         dto.setLocation("l");
@@ -61,7 +63,7 @@ class EventServiceTest {
 
     @Test
     void shouldThrow_whenEndDateBeforeStartDate() {
-        EventDto dto = validDto();
+        EventCreateRequest dto = new EventCreateRequest();
         dto.setEndDate(dto.getStartDate().minusMinutes(1));
 
         assertThrows(IllegalArgumentException.class, () -> eventService.createEvent(dto, "x@example.com"));
@@ -69,16 +71,16 @@ class EventServiceTest {
 
     @Test
     void shouldThrow_whenClubNotFound() {
-        EventDto dto = validDto();
+        EventCreateRequest dto = validDto();
         when(clubRepository.findById(clubId)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> eventService.createEvent(dto, "x@example.com"));
-        verify(clubAuthorizationService, never()).requirePlatformAdminOrClubAdminOrStaff(any(), any());
+        verify(clubAuthorizationService, never()).requireClubManager(any(), any());
     }
 
     @Test
     void shouldCreateEvent_andSetControlledRelations() {
-        EventDto dto = validDto();
+        EventCreateRequest dto = validDto();
         Club club = Club.builder().id(clubId).build();
         User user = User.builder().id(UUID.randomUUID()).email("manager@example.com").build();
 
@@ -86,7 +88,7 @@ class EventServiceTest {
         when(userRepository.findByEmail("manager@example.com")).thenReturn(Optional.of(user));
 
         Event mapped = new Event();
-        when(eventEntityMapper.toEntity(dto)).thenReturn(mapped);
+        when(eventCreateRequestMapper.toEntity(dto)).thenReturn(mapped);
 
         Event saved = new Event();
         saved.setId(eventId);
@@ -104,7 +106,7 @@ class EventServiceTest {
         verify(eventRepository).save(captor.capture());
         assertSame(club, captor.getValue().getClub());
         assertSame(user, captor.getValue().getCreatedBy());
-        verify(clubAuthorizationService).requirePlatformAdminOrClubAdminOrStaff("manager@example.com", clubId);
+        verify(clubAuthorizationService).requireClubManager(clubId, "manager@example.com");
     }
 
     @Test
@@ -114,8 +116,8 @@ class EventServiceTest {
         assertThrows(ResourceNotFoundException.class, () -> eventService.requireCanManageEvent("x@example.com", eventId));
     }
 
-    private EventDto validDto() {
-        EventDto dto = new EventDto();
+    private EventCreateRequest validDto() {
+        EventCreateRequest dto = new EventCreateRequest();
         dto.setClubId(clubId);
         dto.setTitle("Title");
         dto.setDescription("Description");

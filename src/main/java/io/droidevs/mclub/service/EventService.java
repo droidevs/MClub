@@ -22,41 +22,42 @@ public class EventService {
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final EventMapper eventMapper;
-    private final EventEntityMapper eventEntityMapper;
     private final ClubAuthorizationService clubAuthorizationService;
+    private final EventCreateRequestMapper eventCreateRequestMapper;
 
-    public EventDto createEvent(EventDto dto, String email) {
-        if (dto.getClubId() == null) {
+    public EventDto createEvent(EventCreateRequest request, String email) {
+        if (request.getClubId() == null) {
             throw new IllegalArgumentException("clubId is required");
         }
-        if (dto.getTitle() == null || dto.getTitle().isBlank()) {
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
             throw new IllegalArgumentException("title is required");
         }
-        if (dto.getDescription() == null || dto.getDescription().isBlank()) {
+        if (request.getDescription() == null || request.getDescription().isBlank()) {
             throw new IllegalArgumentException("description is required");
         }
-        if (dto.getLocation() == null || dto.getLocation().isBlank()) {
+        if (request.getLocation() == null || request.getLocation().isBlank()) {
             throw new IllegalArgumentException("location is required");
         }
-        if (dto.getStartDate() == null) {
+        if (request.getStartDate() == null) {
             throw new IllegalArgumentException("startDate is required");
         }
-        if (dto.getEndDate() == null) {
+        if (request.getEndDate() == null) {
             throw new IllegalArgumentException("endDate is required");
         }
-        if (dto.getEndDate().isBefore(dto.getStartDate())) {
+        if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new IllegalArgumentException("endDate must be after startDate");
         }
 
-        Club club = clubRepository.findById(dto.getClubId())
+        Club club = clubRepository.findById(request.getClubId())
                 .orElseThrow(() -> new ResourceNotFoundException("Club not found"));
 
-        clubAuthorizationService.requirePlatformAdminOrClubAdminOrStaff(email, club.getId());
+        clubAuthorizationService.requireClubManager(club.getId(), email);
+
 
         User user = userRepository.findByEmail(email).orElseThrow();
 
         // MapStruct maps simple scalar fields; service sets controlled relationships.
-        Event event = eventEntityMapper.toEntity(dto);
+        Event event = eventCreateRequestMapper.toEntity(request);
         event.setClub(club);
         event.setCreatedBy(user);
 
@@ -64,17 +65,26 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    public List<EventDto> getEventsByClub(UUID clubId) {
-        return eventRepository.findByClubId(clubId).stream().map(eventMapper::toDto).collect(Collectors.toList());
+    public Page<EventDto> getEventsByClub(UUID clubId, Pageable pageable) {
+        return eventRepository.findByClubId(clubId, pageable)
+                .map(eventMapper::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EventDto> searchEvents(UUID clubId, String query, Pageable pageable) {
+        return eventRepository.searchByClub(clubId, query, pageable)
+                .map(eventMapper::toDto);
+    }
+
+    public Page<EventSummary> searchEventsLight(UUID clubId, String query, Pageable pageable) {
+        return eventRepository.searchLightweightByClub(clubId, query, pageable);
     }
 
     @Transactional(readOnly = true)
     public List<EventDto> getRecentEventsByClub(UUID clubId) {
         // Fetch joins (club + createdBy) to avoid LazyInitializationException during mapping
-        return eventRepository.findRecentByClubIdWithClubAndCreatedBy(clubId).stream()
-                .limit(5)
-                .map(eventMapper::toDto)
-                .collect(Collectors.toList());
+        return eventRepository.findTop5ByClubIdOrderByStartDateDesc(clubId)
+                .stream().map(eventMapper::toDto).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -92,6 +102,6 @@ public class EventService {
     public void requireCanManageEvent(String email, UUID eventId) {
         Event event = eventRepository.findByIdWithClub(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
-        clubAuthorizationService.requirePlatformAdminOrClubAdminOrStaff(email, event.getClub().getId());
+        clubAuthorizationService.requireClubManager(event.getClub().getId(), email);
     }
 }

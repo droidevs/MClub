@@ -1,5 +1,7 @@
 package io.droidevs.mclub.controller;
 
+import io.droidevs.mclub.domain.Club;
+import io.droidevs.mclub.domain.Event;
 import io.droidevs.mclub.dto.*;
 import io.droidevs.mclub.mapper.EventCreateRequestMapper;
 import io.droidevs.mclub.service.EventService;
@@ -10,6 +12,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(EventController.class)
 @AutoConfigureMockMvc // enable Spring Security filters
-@Import(io.droidevs.mclub.security.SecurityConfig.class)
+@Import({io.droidevs.mclub.security.SecurityConfig.class, TestControllerAdviceMocks.class})
 class EventControllerTest {
 
     @Autowired
@@ -41,7 +45,7 @@ class EventControllerTest {
     @Test
     void getEventsByClub_shouldPermitAnonymous() throws Exception {
         UUID clubId = UUID.randomUUID();
-        when(eventService.getEventsByClub(clubId)).thenReturn(List.of());
+        when(eventService.getEventsByClub(clubId, Pageable.unpaged())).thenReturn(Page.empty());
 
         mvc.perform(get("/api/events/club/{clubId}", clubId))
                 .andExpect(status().isOk());
@@ -66,14 +70,16 @@ class EventControllerTest {
         req.setStartDate(LocalDateTime.now().plusDays(1));
         req.setEndDate(req.getStartDate().plusHours(1));
 
-        EventDto mapped = new EventDto();
-        mapped.setClubId(req.getClubId());
+        Event mapped = new Event();
+        Club club = new Club();
+        club.setId(req.getClubId());
+        mapped.setClub(club);
 
         EventDto out = new EventDto();
         out.setId(UUID.randomUUID());
 
-        when(eventCreateRequestMapper.toDto(any(EventCreateRequest.class))).thenReturn(mapped);
-        when(eventService.createEvent(eq(mapped), eq("admin@example.com"))).thenReturn(out);
+        when(eventCreateRequestMapper.toEntity(any(EventCreateRequest.class))).thenReturn(mapped);
+        when(eventService.createEvent(eq(req), eq("admin@example.com"))).thenReturn(out);
 
         mvc.perform(post("/api/events")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,7 +94,7 @@ class EventControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists());
 
-        verify(eventService).createEvent(eq(mapped), eq("admin@example.com"));
+        verify(eventService).createEvent(eq(req), eq("admin@example.com"));
     }
 
     @Test

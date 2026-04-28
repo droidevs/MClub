@@ -3,6 +3,7 @@ package io.droidevs.mclub.security;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -69,11 +70,11 @@ public class SecurityConfig {
                         // APIs should return 401
                         .defaultAuthenticationEntryPointFor(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), API_MATCHER)
                         // Browser requests should get redirected to /login
-                        .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
+                        //.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
                         .defaultAccessDeniedHandlerFor((request, response, accessDeniedException) -> {
                             response.setStatus(HttpStatus.FORBIDDEN.value());
                             response.setContentType("text/plain;charset=UTF-8");
-                            response.getWriter().write("Forbidden");
+                            response.getWriter().write("Forbidden: " + accessDeniedException.getMessage());
                         }, API_MATCHER)
                 )
                 .authorizeHttpRequests(auth -> auth
@@ -99,11 +100,15 @@ public class SecurityConfig {
                                 "/api/comments/**").permitAll()
 
                         // Home/dashboard: requires auth
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/").permitAll()
+                        .requestMatchers(HttpMethod.POST,"/api/events/*/attendance/check-in/*").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/events/{eventId}/attendance").authenticated()
 
                         // Event detail page should be viewable when logged in (and is the redirect target after registration)
                         .requestMatchers("/events/*").authenticated()
-
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/attendance/check-in"
+                        ).hasRole("STUDENT")
                         // Web actions
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/events/*/register").hasRole("STUDENT")
 

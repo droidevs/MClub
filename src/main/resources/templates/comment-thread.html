@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head}"></head>
+
+<body th:replace="~{layout :: body(content=~{this :: content})}">
+
+<div class="container mt-4" th:fragment="content">
+
+  <!-- 🔥 HEADER -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <a th:href="@{/comments/{type}/{id}(type=${targetType}, id=${targetId})}"
+       class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Back to comments
+    </a>
+
+    <h5 class="mb-0 text-muted">Thread</h5>
+  </div>
+
+  <!-- 🔥 ROOT COMMENT -->
+  <div class="card shadow-sm border-0 rounded-4 mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between">
+        <div class="fw-semibold"
+             th:text="${rootComment.authorFullName}">Author</div>
+
+        <div class="text-muted small"
+             th:text="${#temporals.format(rootComment.createdAt, 'dd MMM yyyy HH:mm')}"></div>
+      </div>
+
+      <p class="mt-2 mb-2" th:text="${rootComment.content}"></p>
+
+      <!-- Actions -->
+      <div class="d-flex gap-3 small text-muted">
+        <span>👍 <span th:text="${rootComment.likeCount}">0</span></span>
+        <span>💬 <span th:text="${rootComment.replyCount}">0</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔥 REPLIES LIST -->
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-body">
+
+      <div id="repliesContainer">
+
+        <div th:if="${#lists.isEmpty(repliesPage.content)}"
+             class="text-muted text-center py-3">
+          No replies yet
+        </div>
+
+        <div th:each="r : ${repliesPage.content}"
+             class="reply-item border-start ps-3 mb-3">
+
+          <div class="d-flex justify-content-between">
+            <div class="fw-semibold"
+                 th:text="${r.authorFullName}">User</div>
+
+            <div class="text-muted small"
+                 th:text="${#temporals.format(r.createdAt, 'dd MMM yyyy HH:mm')}"></div>
+          </div>
+
+          <div class="mt-1" th:text="${r.content}"></div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-3 mt-2 small">
+            <button class="btn btn-sm btn-link p-0"
+                    th:attr="data-like=${r.id}">
+              👍 <span th:text="${r.likeCount}">0</span>
+            </button>
+
+            <button class="btn btn-sm btn-link p-0"
+                    th:attr="data-reply=${r.id}">
+              Reply
+            </button>
+          </div>
+
+          <!-- Reply box -->
+          <div class="mt-2 d-none"
+               th:attr="data-reply-box=${r.id}">
+                        <textarea class="form-control mb-2"
+                                  rows="2"
+                                  placeholder="Write a reply..."></textarea>
+            <button class="btn btn-sm btn-primary"
+                    th:attr="data-submit-reply=${r.id}">
+              Send
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 🔥 LOAD MORE -->
+      <div class="text-center mt-3"
+           th:if="${repliesPage.hasNext()}">
+        <button id="loadMoreBtn"
+                class="btn btn-outline-primary btn-sm"
+                th:attr="data-page=${repliesPage.number + 1}">
+          Load more
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const container = document.getElementById('repliesContainer');
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  const commentId = /*[[${commentId}]]*/ "";
+
+  // 🔥 Render reply
+  const renderReply = (r) => `
+        <div class="reply-item border-start ps-3 mb-3">
+            <div class="d-flex justify-content-between">
+                <div class="fw-semibold">${r.authorFullName || 'Unknown'}</div>
+                <div class="text-muted small">${r.createdAt?.replace('T',' ')}</div>
+            </div>
+            <div class="mt-1">${r.content}</div>
+        </div>
+    `;
+
+  // 🔥 LOAD MORE (no reload)
+  loadMoreBtn?.addEventListener('click', async () => {
+    const page = parseInt(loadMoreBtn.dataset.page);
+
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.textContent = "Loading...";
+
+    try {
+      const res = await fetch(`/api/comments/replies/${commentId}?page=${page}`);
+      const data = await res.json();
+
+      container.insertAdjacentHTML(
+              "beforeend",
+              data.content.map(renderReply).join("")
+      );
+
+      if (data.last) {
+        loadMoreBtn.remove();
+      } else {
+        loadMoreBtn.dataset.page = page + 1;
+        loadMoreBtn.textContent = "Load more";
+        loadMoreBtn.disabled = false;
+      }
+
+    } catch (e) {
+      loadMoreBtn.textContent = "Error";
+      loadMoreBtn.disabled = false;
+    }
+  });
+
+  // 🔥 Toggle reply box
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-reply]');
+    if (!btn) return;
+
+    const id = btn.dataset.reply;
+    const box = document.querySelector(`[data-reply-box="${id}"]`);
+    if (box) box.classList.toggle('d-none');
+  });
+
+</script>
+
+</body>
+</html>

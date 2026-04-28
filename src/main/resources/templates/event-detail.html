@@ -33,51 +33,120 @@
             <div class="card shadow-sm border-0 mt-3">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Comments</h5>
-                    <a class="btn btn-sm btn-outline-secondary" th:href="@{/comments/EVENT/{id}(id=${event.id})}">
+                    <a class="btn btn-sm btn-outline-secondary"
+                       th:href="@{/comments/EVENT/{id}(id=${event.id})}">
                         View all
                     </a>
                 </div>
+
                 <div class="card-body">
 
-                    <!-- Preview existing comments for everyone (admins included) -->
-                    <div th:if="${comments == null or #lists.isEmpty(comments)}" class="text-muted">
+                    <!-- 🔹 Summary -->
+                    <div class="mb-3 text-muted small"
+                         th:if="${commentsPreview != null}">
+                        <span th:text="${commentsPreview.totalComments}">0</span> comments •
+                        <span th:text="${commentsPreview.totalReplies}">0</span> replies •
+                        <span th:text="${commentsPreview.totalLikes}">0</span> likes
+                    </div>
+
+                    <!-- 🔹 No comments -->
+                    <div th:if="${commentsPreview == null or #lists.isEmpty(commentsPreview.topComments)}"
+                         class="text-muted">
                         <small>No comments yet.</small>
                     </div>
 
-                    <div th:if="${comments != null and !#lists.isEmpty(comments)}" class="mb-3">
+                    <!-- 🔹 Top Comments -->
+                    <div th:if="${commentsPreview != null and !#lists.isEmpty(commentsPreview.topComments)}"
+                         class="mb-3">
+
                         <div class="border rounded p-2 mb-2"
-                             th:each="c, iter : ${comments}"
-                             th:if="${iter.index < 3}">
+                             th:each="c : ${commentsPreview.topComments}">
+
                             <div class="d-flex justify-content-between">
                                 <div class="fw-semibold" th:text="${c.authorFullName}">Author</div>
-                                <div class="text-muted small" th:text="${#temporals.format(c.createdAt, 'yyyy-MM-dd HH:mm')}">time</div>
+                                <div class="text-muted small"
+                                     th:text="${#temporals.format(c.createdAt, 'yyyy-MM-dd HH:mm')}">
+                                    time
+                                </div>
                             </div>
+
                             <div class="mt-1" th:text="${c.content}">Content</div>
-                            <div class="text-muted small mt-1" th:if="${c.replyCount > 0}">
-                                <span th:text="${c.replyCount}">0</span> replies — open “View all”
+
+                            <div class="text-muted small mt-1 d-flex justify-content-between">
+
+                    <span>
+                        👍 <span th:text="${c.likeCount}">0</span>
+                    </span>
+
+                                <span th:if="${c.replyCount > 0}">
+                        <span th:text="${c.replyCount}">0</span> replies
+                    </span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mb-2" sec:authorize="hasRole('STUDENT')">
+                    <!-- 🔹 Latest Comment Highlight -->
+                    <div th:if="${commentsPreview != null and commentsPreview.latestComment != null}"
+                         class="border-top pt-2 mt-2">
+
+                        <small class="text-muted">Latest comment</small>
+
+                        <div class="mt-1">
+                            <strong th:text="${commentsPreview.latestComment.authorFullName}"></strong>:
+                            <span th:text="${commentsPreview.latestComment.content}"></span>
+                        </div>
+                    </div>
+
+                    <!-- 🔹 Add Comment -->
+                    <div class="mt-3" sec:authorize="hasRole('STUDENT')">
                         <form id="eventCommentForm" th:attr="data-event-id=${event.id}">
                             <label class="form-label">Add a comment</label>
-                            <textarea name="content" class="form-control" rows="3" maxlength="2000" placeholder="Be respectful…" required></textarea>
+
+                            <textarea name="content"
+                                      class="form-control"
+                                      rows="3"
+                                      maxlength="2000"
+                                      placeholder="Be respectful…"
+                                      required></textarea>
+
                             <div class="d-flex justify-content-end mt-2">
                                 <button class="btn btn-primary" type="submit">Post</button>
                             </div>
                         </form>
-                        <div class="form-text">To reply to comments, open “View all”.</div>
+
+                        <div class="form-text">
+                            To reply to comments, open “View all”.
+                        </div>
                     </div>
 
                     <div class="text-muted" th:if="${auth == null}">
                         <small>Login to comment.</small>
                     </div>
+
                 </div>
             </div>
         </div>
 
+
         <div class="col-lg-4">
+
+            <!-- Attendance Summary -->
+            <div class="card shadow-sm border-0 mb-3" th:if="${eventEnded}">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Attendance</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold" th:text="${attendanceCount}">0</div>
+                    <div class="text-muted small">participants attended</div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 mb-3 text-center" th:if="${!eventEnded}">
+                <div class="card-body text-muted small">
+                    Attendance will be available after the event ends.
+                </div>
+            </div>
+
             <!-- Rating summary (uses existing API used in events.html) -->
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-light"><h6 class="mb-0">Rating</h6></div>
@@ -99,25 +168,6 @@
                 </div>
             </div>
 
-            <!-- Attendees: only show after event ended -->
-            <div class="card shadow-sm border-0 mt-3" th:if="${eventEnded}">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">Attendees</h6>
-                    <span class="badge text-bg-secondary" th:text="${attendanceCount}">0</span>
-                </div>
-                <div class="card-body p-0">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item" th:each="a : ${attendance}">
-                            <div class="fw-semibold" th:text="${a.userEmail}">student@example.com</div>
-                            <div class="text-muted small">
-                                <span th:text="${#temporals.format(a.checkedInAt, 'yyyy-MM-dd HH:mm')}">time</span>
-                                <span class="ms-2" th:text="${a.method}">method</span>
-                            </div>
-                        </li>
-                        <li class="list-group-item text-center text-muted" th:if="${#lists.isEmpty(attendance)}">No attendance records.</li>
-                    </ul>
-                </div>
-            </div>
         </div>
     </div>
 </div>

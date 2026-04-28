@@ -1,11 +1,16 @@
 package io.droidevs.mclub.controller;
 
+import io.droidevs.mclub.domain.Comment;
 import io.droidevs.mclub.domain.CommentTargetType;
 import io.droidevs.mclub.domain.Event;
 import io.droidevs.mclub.dto.CommentCreateRequest;
+import io.droidevs.mclub.dto.CommentDto;
 import io.droidevs.mclub.service.CommentService;
 import io.droidevs.mclub.service.EventService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,12 +30,16 @@ public class WebCommentsController {
     public String comments(@PathVariable String targetType,
                            @PathVariable UUID targetId,
                            Model model,
+                           @PageableDefault Pageable pageable,
                            Authentication auth) {
+
         CommentTargetType type = CommentTargetType.valueOf(targetType.toUpperCase());
 
-        // For now, we have a web detail page only for events.
-        // Activities are supported as a comment target in the backend API, but UI routing to an activity page
-        // can be wired once an activity detail page exists.
+        String userEmail = (auth != null && auth.isAuthenticated()
+                && !"anonymousUser".equals(auth.getPrincipal()))
+                ? auth.getName()
+                : null;
+
         if (type == CommentTargetType.EVENT) {
             Event event = eventService.getEvent(targetId);
             model.addAttribute("event", event);
@@ -45,8 +54,45 @@ public class WebCommentsController {
 
         model.addAttribute("targetType", type.name());
         model.addAttribute("targetId", targetId);
-        model.addAttribute("comments", commentService.getThreadWithReplyPreview(type, targetId, auth != null ? auth.getName() : null, 1));
+
+        model.addAttribute(
+                "commentsPage",
+                commentService.getThread(type, targetId, pageable, userEmail)
+        );
+
         model.addAttribute("form", new CommentCreateRequest());
+
+        // 👇 UI flag (important UX improvement)
+        model.addAttribute("isAuthenticated", userEmail != null);
+
         return "comments";
+    }
+
+    @GetMapping("/comments/thread/{commentId}")
+    public String commentThread(@PathVariable UUID commentId,
+                                Model model,
+                                @PageableDefault(size = 10) Pageable pageable,
+                                Authentication auth) {
+
+        String userEmail = (auth != null && auth.isAuthenticated()
+                && !"anonymousUser".equals(auth.getPrincipal()))
+                ? auth.getName()
+                : null;
+
+        CommentDto rootComment = commentService.getComment(commentId);
+
+        Comment comment = commentService.getCommentEntity(commentId);
+
+        Page<CommentDto> repliesPage =
+                commentService.getDirectReplies(commentId, pageable, userEmail);
+
+        model.addAttribute("targetType", comment.getTargetType());
+        model.addAttribute("targetId", comment.getTargetId());
+        model.addAttribute("rootComment", rootComment);
+        model.addAttribute("repliesPage", repliesPage);
+        model.addAttribute("commentId", commentId);
+        model.addAttribute("isAuthenticated", userEmail != null);
+
+        return "comment-thread";
     }
 }

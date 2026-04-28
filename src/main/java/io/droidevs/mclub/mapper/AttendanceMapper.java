@@ -11,7 +11,7 @@ public interface AttendanceMapper {
     @Mapping(source = "event.id", target = "eventId")
     @Mapping(source = "user.id", target = "userId")
     @Mapping(source = "user.email", target = "userEmail")
-    @Mapping(expression = "java(a.getMethod() != null ? a.getMethod().name() : null)", target = "method")
-    AttendanceRecordDto toDto(EventAttendance a);
+    @Mapping(source = "checkedInBy.id", target = "checkedInById")
+    AttendanceRecordDto toDto(EventAttendance entity);
 }
 

@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout :: head}"></head>
+<head th:replace="~{layout :: head}">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
 <body th:replace="~{layout :: body(content=~{this :: content})}">
 
 <div class="container mt-4" th:fragment="content">
@@ -10,7 +13,9 @@
             <div class="text-muted">
                 <span th:text="${club.name}">Club</span>
                 <span class="mx-2">•</span>
-                <span class="small">Pending requests</span>
+                <div class="text-muted small">
+                    <span th:text="${applicationsPage.totalElements}"></span> pending requests
+                </div>
             </div>
         </div>
         <div class="d-flex gap-2">
@@ -41,23 +46,29 @@
                     <tbody>
                     <tr th:each="app : ${applications}">
                         <td class="ps-4 fw-semibold" th:text="${app.user.fullName}">Full name</td>
+                        <!-- ✅ NEW: status badge -->
+                        <span class="badge bg-warning text-dark mt-1">
+                            Pending
+                        </span>
                         <td class="text-muted" th:text="${app.user.email}">email</td>
                         <td class="text-muted" th:text="${#temporals.format(app.joinedAt, 'dd MMM yyyy HH:mm')}">date</td>
                         <td class="pe-4 text-end">
                             <div class="d-flex gap-2 justify-content-end">
-                                <form th:action="@{/club-admin/memberships/{id}/status(id=${app.id})}" method="post">
-                                    <input type="hidden" name="status" value="APPROVED"/>
-                                    <button type="submit" class="btn btn-sm btn-success">
-                                        <i class="bi bi-check-lg"></i> Approve
-                                    </button>
-                                </form>
+                                <!-- Approve -->
+                                <button type="button"
+                                        class="btn btn-sm btn-success"
+                                        th:attr="data-id=${app.id}"
+                                        onclick="updateStatus(this, 'APPROVED')">
+                                    <i class="bi bi-check-lg"></i> Approve
+                                </button>
 
-                                <form th:action="@{/club-admin/memberships/{id}/status(id=${app.id})}" method="post">
-                                    <input type="hidden" name="status" value="REJECTED"/>
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Reject this application?');">
-                                        <i class="bi bi-x-lg"></i> Reject
-                                    </button>
-                                </form>
+                                <!-- Reject -->
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        th:attr="data-id=${app.id}"
+                                        onclick="updateStatus(this, 'REJECTED')">
+                                    <i class="bi bi-x-lg"></i> Reject
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -75,8 +86,97 @@
     <div class="alert alert-info mt-4">
         Tip: after approving, the student will appear in the Members page.
     </div>
+
+    <!-- Pagination -->
+    <div class="d-flex justify-content-between align-items-center mt-4"
+         th:if="${applicationsPage.totalPages > 1}">
+
+        <!-- Page info -->
+        <div class="text-muted small">
+            Page <span th:text="${applicationsPage.number + 1}"></span>
+            of <span th:text="${applicationsPage.totalPages}"></span>
+        </div>
+
+        <!-- Pagination -->
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+
+                <!-- Previous -->
+                <li class="page-item"
+                    th:classappend="${!applicationsPage.hasPrevious()} ? 'disabled'">
+
+                    <a class="page-link rounded-pill"
+                       th:href="@{/club-admin/clubs/{clubId}/memberships(clubId=${club.id}, page=${applicationsPage.number - 1}, size=${applicationsPage.size})}">
+                        ←
+                    </a>
+                </li>
+
+                <!-- Page numbers -->
+                <li class="page-item"
+                    th:each="i : ${#numbers.sequence(0, applicationsPage.totalPages - 1)}"
+                    th:classappend="${i == applicationsPage.number} ? 'active'">
+
+                    <a class="page-link rounded-pill"
+                       th:href="@{/club-admin/clubs/{clubId}/memberships(clubId=${club.id}, page=${i}, size=${applicationsPage.size})}"
+                       th:text="${i + 1}">
+                    </a>
+                </li>
+
+                <!-- Next -->
+                <li class="page-item"
+                    th:classappend="${!applicationsPage.hasNext()} ? 'disabled'">
+
+                    <a class="page-link rounded-pill"
+                       th:href="@{/club-admin/clubs/{clubId}/memberships(clubId=${club.id}, page=${applicationsPage.number + 1}, size=${applicationsPage.size})}">
+                        →
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
+    </div>
 </div>
 
+<script>
+    async function updateStatus(btn, status) {
+        const id = btn.getAttribute('data-id');
+
+        if (status === 'REJECTED' && !confirm('Reject this application?')) {
+            return;
+        }
+
+        // ✅ Save original button content
+        const originalHtml = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+
+        try {
+            const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+
+            const res = await fetch(`/api/memberships/${id}/status?status=${status}`, {
+                method: 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    [csrfHeader]: csrfToken
+                }
+            });
+
+            if (!res.ok) {
+                throw new Error(await res.text());
+            }
+
+            btn.closest('tr').remove();
+
+        } catch (e) {
+            alert('Error: ' + e.message);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+</script>
 </body>
 </html>
 

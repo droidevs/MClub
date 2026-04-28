@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthorizationDeniedException.class)
     public ResponseEntity<?> authorizationDenied(AuthorizationDeniedException ex) {
-        return new ResponseEntity<>("Forbidden", HttpStatus.FORBIDDEN);
+        return new ResponseEntity<>("", HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

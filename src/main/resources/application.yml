@@ -6,14 +6,14 @@ spring:
     username: mclub_user
     password: mclub_password
     driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      # Avoid 'Failed to validate connection (This connection has been closed.)' by proactively
-      # keeping idle connections alive and recycling them before DB/network timeouts.
-      keepalive-time: 300000     # 5 minutes
-      max-lifetime: 1200000      # 20 minutes
-      idle-timeout: 600000       # 10 minutes
+#    hikari:
+#      maximum-pool-size: 10
+#      minimum-idle: 2
+#      # Avoid 'Failed to validate connection (This connection has been closed.)' by proactively
+#      # keeping idle connections alive and recycling them before DB/network timeouts.
+#      keepalive-time: 300000     # 5 minutes
+#      max-lifetime: 1200000      # 20 minutes
+#      idle-timeout: 600000       # 10 minutes
 
   jpa:
     open-in-view: false

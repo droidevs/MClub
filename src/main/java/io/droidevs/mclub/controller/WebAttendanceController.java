@@ -5,14 +5,17 @@ import io.droidevs.mclub.domain.ClubRole;
 import io.droidevs.mclub.domain.User;
 import io.droidevs.mclub.dto.AttendanceRecordDto;
 import io.droidevs.mclub.dto.AttendanceWindowRequest;
+import io.droidevs.mclub.dto.ClubDto;
+import io.droidevs.mclub.dto.EventDto;
 import io.droidevs.mclub.exception.ResourceNotFoundException;
 import io.droidevs.mclub.repository.ClubRepository;
 import io.droidevs.mclub.repository.EventRepository;
 import io.droidevs.mclub.repository.MembershipRepository;
-import io.droidevs.mclub.service.AttendanceService;
-import io.droidevs.mclub.service.CurrentUserService;
-import io.droidevs.mclub.service.EventService;
+import io.droidevs.mclub.service.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,7 +26,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Controller
-@RequestMapping("/club-admin")
 @RequiredArgsConstructor
 public class WebAttendanceController {
 
@@ -32,98 +34,51 @@ public class WebAttendanceController {
     private final MembershipRepository membershipRepository;
     private final AttendanceService attendanceService;
     private final CurrentUserService currentUserService;
+    private final ClubAuthorizationService authorizationService;
     private final EventService eventService;
+    private final ClubService clubService;
 
-    private boolean canManageClub(UUID clubId, UUID userId) {
-        return membershipRepository.findByClubId(clubId).stream()
-                .anyMatch(m -> m.getUser().getId().equals(userId)
-                        && (m.getRole() == ClubRole.ADMIN || m.getRole() == ClubRole.STAFF));
-    }
 
     @GetMapping("/clubs/{clubId}/attendance")
-    public String clubAttendanceEvents(@PathVariable UUID clubId, Model model, Authentication auth) {
-        User user = currentUserService.requireUser(auth);
-        if (!canManageClub(clubId, user.getId())) {
+    public String clubAttendanceEvents(@PathVariable UUID clubId, Model model, Pageable pageable, Authentication auth) {
+        if (!authorizationService.canManageClub(clubId, auth.getName())) {
             return "redirect:/";
         }
 
-        Club club = clubRepository.findById(clubId)
-                .orElseThrow(() -> new ResourceNotFoundException("Club not found"));
+        ClubDto club = clubService.getClub(clubId);
+        Page<EventDto> events = eventService.getEventsByClub(clubId, pageable);
 
         model.addAttribute("club", club);
-        model.addAttribute("events", eventRepository.findByClubId(clubId));
+        model.addAttribute("eventsPage", events);
         return "club-attendance-events";
     }
+
 
     @GetMapping("/events/{eventId}/attendance")
     public String manageAttendance(@PathVariable UUID eventId,
                                    @ModelAttribute("qrToken") String qrToken,
                                    Model model,
+                                   @PageableDefault Pageable pageable,
                                    Authentication auth) {
         var event = eventRepository.findByIdWithClub(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found"));
 
-        User user = currentUserService.requireUser(auth);
         UUID clubId = event.getClub().getId();
-        if (!canManageClub(clubId, user.getId())) {
+        if (!authorizationService.canManageClub(clubId, auth.getName())) {
             return "redirect:/";
         }
 
-        List<AttendanceRecordDto> attendance = attendanceService.listAttendance(eventId, auth.getName());
+        Page<AttendanceRecordDto> attendance = attendanceService.listAttendance(eventId,pageable, auth.getName());
 
         model.addAttribute("club", event.getClub());
         model.addAttribute("event", event);
-        model.addAttribute("attendance", attendance);
-        model.addAttribute("attendanceCount", attendance.size());
+        model.addAttribute("attendancePage", attendance);
         model.addAttribute("qrToken", (qrToken == null || qrToken.isBlank()) ? null : qrToken);
         model.addAttribute("windowRequest", new AttendanceWindowRequest());
 
         return "manage-attendance";
     }
 
-    @PostMapping("/events/{eventId}/attendance/window")
-    public String openOrRotate(@PathVariable UUID eventId,
-                               @RequestParam int opensBeforeStartMinutes,
-                               @RequestParam int closesAfterStartMinutes,
-                               Authentication auth,
-                               RedirectAttributes redirectAttributes) {
-        try {
-            AttendanceWindowRequest req = new AttendanceWindowRequest();
-            req.setOpensBeforeStartMinutes(opensBeforeStartMinutes);
-            req.setClosesAfterStartMinutes(closesAfterStartMinutes);
-            var qr = attendanceService.openOrUpdateWindow(eventId, req, auth.getName());
-            redirectAttributes.addFlashAttribute("message", "Attendance window opened and QR rotated.");
-            redirectAttributes.addFlashAttribute("qrToken", qr.getToken());
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-        }
-        return "redirect:/club-admin/events/" + eventId + "/attendance";
-    }
-
-    @PostMapping("/events/{eventId}/attendance/window/close")
-    public String close(@PathVariable UUID eventId, Authentication auth, RedirectAttributes redirectAttributes) {
-        try {
-            attendanceService.closeWindow(eventId, auth.getName());
-            redirectAttributes.addFlashAttribute("message", "Attendance window closed.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-        }
-        return "redirect:/club-admin/events/" + eventId + "/attendance";
-    }
-
-    @PostMapping("/events/{eventId}/attendance/check-in")
-    public String manualCheckIn(@PathVariable UUID eventId,
-                                @RequestParam UUID studentId,
-                                Authentication auth,
-                                RedirectAttributes redirectAttributes) {
-        try {
-            attendanceService.organizerCheckInStudent(eventId, studentId, auth.getName());
-            redirectAttributes.addFlashAttribute("message", "Student checked in successfully.");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-        }
-        return "redirect:/club-admin/events/" + eventId + "/attendance";
-    }
 
     @GetMapping("/events/{eventId}/admin")
     public String eventAdmin(@PathVariable UUID eventId, Model model, Authentication auth) {

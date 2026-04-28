@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(WebAuthController.class)
 @AutoConfigureMockMvc
-@Import(io.droidevs.mclub.security.SecurityConfig.class)
+@Import({io.droidevs.mclub.security.SecurityConfig.class, TestControllerAdviceMocks.class})
 class WebAuthCookieTest {
 
     @Autowired MockMvc mvc;

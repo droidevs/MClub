@@ -13,7 +13,7 @@
                 <span th:text="${event.title}">Event</span>
             </div>
         </div>
-        <a th:href="@{/club-admin/clubs}" class="btn btn-outline-secondary btn-sm">
+        <a th:href="@{/clubs}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left"></i> Back
         </a>
     </div>
@@ -21,11 +21,11 @@
     <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
         <div>
             <h5 class="card-title mb-0">Checked-in Students</h5>
-            <span class="badge bg-primary" th:text="${attendanceCount} + ' حاضر'">0</span>
+            <span class="badge bg-primary" th:text="${attendancePage.totalElements} + ' حاضر'">0</span>
         </div>
         <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary" th:href="@{/club-admin/clubs/{id}/attendance(id=${club.id})}">Back</a>
-            <a class="btn btn-outline-primary" th:href="@{/club-admin/events/{eventId}/admin(eventId=${event.id})}">Event admin</a>
+            <a class="btn btn-outline-secondary" th:href="@{/clubs/{id}/attendance(id=${club.id})}">Back</a>
+            <a class="btn btn-outline-primary" th:href="@{/events/{eventId}/admin(eventId=${event.id})}">Event admin</a>
         </div>
     </div>
 
@@ -43,7 +43,7 @@
                     <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
                     <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-                    <form th:action="@{/club-admin/events/{eventId}/attendance/window(eventId=${event.id})}" method="post" class="row g-3">
+                    <form onsubmit="openWindow(event)" class="row g-3">
                         <div class="col-12">
                             <label class="form-label" for="opensBefore">Opens قبل البداية (minutes)</label>
                             <input class="form-control" id="opensBefore" name="opensBeforeStartMinutes" type="number" min="0" max="1440" value="15" required>
@@ -62,12 +62,10 @@
 
                     <hr class="my-4">
 
-                    <form th:action="@{/club-admin/events/{eventId}/attendance/window/close(eventId=${event.id})}" method="post" class="d-grid">
-                        <button class="btn btn-outline-danger">
-                            <i class="bi bi-door-closed me-1"></i>
-                            Close Check-in Window
-                        </button>
-                    </form>
+                    <button class="btn btn-outline-danger" onclick="closeWindow(event)">
+                        <i class="bi bi-door-closed me-1"></i>
+                        Close Check-in Window
+                    </button>
 
                     <div class="mt-4">
                         <h6 class="mb-2">Current QR token</h6>
@@ -116,10 +114,15 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">Checked-in Students</h5>
-                        <span class="badge bg-primary" th:text="${attendanceCount} + ' حاضر'">0</span>
+                        <span class="badge bg-primary" th:text="${attendancePage.totalElements} + ' حاضر'">0</span>
                     </div>
 
-                    <div class="table-responsive mt-3">
+                    <div class="text-muted small">
+                        Showing <b th:text="${attendancePage.numberOfElements}"></b>
+                        of <b th:text="${attendancePage.totalElements}"></b> records
+                    </div>
+
+                    <div class="table-responsive border rounded-3 mt-3">
                         <table class="table table-sm align-middle">
                             <thead class="table-light">
                             <tr>
@@ -128,17 +131,73 @@
                                 <th>Method</th>
                             </tr>
                             </thead>
-                            <tbody>
-                            <tr th:each="a : ${attendance}">
+                            <tbody id="attendanceTable">
+                            th:each="a : ${attendancePage.content}"
                                 <td class="fw-semibold" th:text="${a.userEmail}">email</td>
                                 <td class="text-muted" th:text="${#temporals.format(a.checkedInAt, 'dd MMM yyyy HH:mm')}">time</td>
                                 <td><span class="badge bg-secondary" th:text="${a.method}">method</span></td>
                             </tr>
-                            <tr th:if="${#lists.isEmpty(attendance)}">
+                            <tr th:if="${attendancePage.totalElements == 0}">
                                 <td colspan="3" class="text-center text-muted py-4">No one checked in yet.</td>
                             </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- PAGINATION -->
+                    <div class="d-flex justify-content-between align-items-center mt-3"
+                         th:if="${attendancePage.totalPages > 1}">
+
+                        <div class="text-muted small">
+                            Page <b th:text="${attendancePage.number + 1}"></b>
+                            of <b th:text="${attendancePage.totalPages}"></b>
+                        </div>
+
+                        <ul class="pagination pagination-sm mb-0">
+
+                            <!-- PREV -->
+                            <li class="page-item" th:classappend="${attendancePage.first} ? 'disabled'">
+                                <a class="page-link"
+                                   th:href="@{/events/{eventId}/attendance(
+                                        eventId=${event.id},
+                                        page=${attendancePage.number - 1},
+                                        size=${attendancePage.size}
+                                   )}">
+                                    ←
+                                </a>
+                            </li>
+
+                            <!-- PAGE NUMBERS -->
+                            <li class="page-item"
+                                th:each="i : ${#numbers.sequence(
+                                T(java.lang.Math).max(0, attendancePage.number - 2),
+                                T(java.lang.Math).min(attendancePage.totalPages - 1, attendancePage.number + 2)
+                            )}"
+                                th:classappend="${i == attendancePage.number} ? 'active'">
+
+                                <a class="page-link"
+                                   th:text="${i + 1}"
+                                   th:href="@{/events/{eventId}/attendance(
+                                        eventId=${event.id},
+                                        page=${i},
+                                        size=${attendancePage.size}
+                                   )}">
+                                </a>
+                            </li>
+
+                            <!-- NEXT -->
+                            <li class="page-item" th:classappend="${attendancePage.last} ? 'disabled'">
+                                <a class="page-link"
+                                   th:href="@{/events/{eventId}/attendance(
+                                        eventId=${event.id},
+                                        page=${attendancePage.number + 1},
+                                        size=${attendancePage.size}
+                                   )}">
+                                    →
+                                </a>
+                            </li>
+
+                        </ul>
                     </div>
 
                     <hr class="my-4">
@@ -146,15 +205,15 @@
                     <h6 class="mb-2">Manual check-in</h6>
                     <p class="text-muted small">If you scan a student’s ID/QR externally, paste their userId here to mark attendance.</p>
 
-                    <form th:action="@{/club-admin/events/{eventId}/attendance/check-in(eventId=${event.id})}" method="post" class="row g-2">
+                    <div class="row g-2">
                         <div class="col-md-8">
                             <label class="form-label" for="studentId">Student UUID</label>
                             <input class="form-control font-monospace" id="studentId" name="studentId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required>
                         </div>
                         <div class="col-md-4 d-grid align-items-end">
-                            <button class="btn btn-outline-primary mt-2 mt-md-0"><i class="bi bi-person-check me-1"></i>Check in</button>
+                            <button onclick="manualCheckIn(event)" class="btn btn-outline-primary mt-2 mt-md-0"><i class="bi bi-person-check me-1"></i>Check in</button>
                         </div>
-                    </form>
+                    </div>
 
                 </div>
             </div>
@@ -323,10 +382,84 @@
       s.onload = draw;
       document.head.appendChild(s);
     })();
-  <\\/script>
+  <\/script>
 </body>
 </html>`);
         w.document.close();
+    }
+
+    async function openWindow(e) {
+        e.preventDefault();
+
+        const eventId = '[[${event.id}]]';
+
+        const body = {
+            opensBeforeStartMinutes: document.getElementById('opensBefore').value,
+            closesAfterStartMinutes: document.getElementById('closesAfter').value
+        };
+
+        const res = await fetch(`/api/events/${eventId}/attendance-window`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+            alert("Failed to open window");
+            return;
+        }
+
+        const data = await res.json();
+
+        showMessage("Window opened + QR rotated");
+        renderQrFromToken(data.token);
+    }
+
+    async function closeWindow(e) {
+        e.preventDefault();
+
+        const eventId = '[[${event.id}]]';
+
+        const res = await fetch(`/api/events/${eventId}/attendance-window`, {
+            method: "DELETE"
+        });
+
+        if (!res.ok) {
+            alert("Failed to close window");
+            return;
+        }
+
+        showMessage("Window closed");
+    }
+
+    async function manualCheckIn(e) {
+        e.preventDefault();
+
+        const eventId = '[[${event.id}]]';
+
+        const studentId = document.getElementById("studentId").value;
+
+        const res = await fetch(`/api/events/${eventId}/attendances`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                studentId: studentId
+            })
+        });
+
+        if (!res.ok) {
+            alert("Check-in failed");
+            return;
+        }
+
+        showMessage("Student checked in");
+
+        // reload list dynamically
+        loadAttendance();
     }
 </script>
 

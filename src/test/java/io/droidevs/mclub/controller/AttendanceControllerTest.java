@@ -9,6 +9,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 
@@ -24,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AttendanceController.class)
 @AutoConfigureMockMvc // enable Spring Security filters
-@Import(io.droidevs.mclub.security.SecurityConfig.class)
+@Import({io.droidevs.mclub.security.SecurityConfig.class, TestControllerAdviceMocks.class})
 class AttendanceControllerTest {
 
     @Autowired
@@ -39,8 +41,8 @@ class AttendanceControllerTest {
     void studentCheckIn_shouldReturn401_whenAnonymous() throws Exception {
         mvc.perform(post("/api/attendance/check-in")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"token\":\"t\"}"))
-                .andExpect(status().isUnauthorized());
+                        .content(""))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -71,7 +73,7 @@ class AttendanceControllerTest {
     @WithMockUser(username = "staff@example.com", roles = "STUDENT")
     void listAttendance_shouldCallRequireCanManageEvent() throws Exception {
         UUID eventId = UUID.randomUUID();
-        when(attendanceService.listAttendance(eventId, "staff@example.com")).thenReturn(List.of());
+        when(attendanceService.listAttendance(eventId, Pageable.unpaged(), "staff@example.com")).thenReturn(Page.empty());
 
         mvc.perform(get("/api/events/{eventId}/attendance", eventId))
                 .andExpect(status().isOk());

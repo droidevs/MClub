@@ -30,7 +30,7 @@ class CommentMapperTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        CommentDto dto = commentMapper.toDto(c, 7L, true);
+        CommentDto dto = commentMapper.toDto(c, 7L, true,2,true);
         assertNotNull(dto);
         assertEquals(c.getId(), dto.getId());
         assertEquals(author.getId(), dto.getAuthorId());
@@ -38,8 +38,8 @@ class CommentMapperTest {
         assertEquals(7L, dto.getLikeCount());
         assertTrue(dto.isLikedByMe());
         assertEquals("[deleted]", dto.getContent());
-        assertNotNull(dto.getReplies());
-        assertTrue(dto.getReplies().isEmpty());
+        assertNotNull(dto.getRepliesPreview());
+        assertTrue(dto.getRepliesPreview().isEmpty());
     }
 }
 

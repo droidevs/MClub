@@ -1,5 +1,6 @@
 package io.droidevs.mclub.controller;
 
+import io.droidevs.mclub.domain.MembershipStatus;
 import io.droidevs.mclub.dto.MembershipDto;
 import io.droidevs.mclub.service.MembershipService;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(MembershipController.class)
 @AutoConfigureMockMvc // enable Spring Security filters
-@Import(io.droidevs.mclub.security.SecurityConfig.class)
+@Import({io.droidevs.mclub.security.SecurityConfig.class, TestControllerAdviceMocks.class})
 class MembershipControllerTest {
 
     @Autowired MockMvc mvc;
@@ -50,7 +51,7 @@ class MembershipControllerTest {
     @WithMockUser(username = "a@example.com", roles = "PLATFORM_ADMIN")
     void updateStatus_shouldAllowPlatformAdmin() throws Exception {
         UUID mid = UUID.randomUUID();
-        when(membershipService.updateStatus(mid, "APPROVED")).thenReturn(new MembershipDto());
+        when(membershipService.updateStatus(mid, MembershipStatus.APPROVED,"a@example.com")).thenReturn(new MembershipDto());
 
         mvc.perform(put("/api/memberships/{id}/status", mid)
                         .queryParam("status", "APPROVED")

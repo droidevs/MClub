@@ -12,9 +12,18 @@ public interface CommentFactoryMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "author", ignore = true)
+
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "deleted", ignore = true)
+
+    @Mapping(target = "targetType", source = "targetType")
+    @Mapping(target = "targetId", source = "targetId")
+    @Mapping(target = "parentId", source = "parentId")
     @Mapping(target = "content", source = "content")
-    Comment create(CommentTargetType targetType, UUID targetId, UUID parentId, String content);
+
+    Comment create(CommentTargetType targetType,
+                   UUID targetId,
+                   UUID parentId,
+                   String content);
 }
 

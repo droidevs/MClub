@@ -12,6 +12,12 @@ public interface UserEntityMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "password", ignore = true) // encoded in AuthService
     @Mapping(target = "role", ignore = true)     // derived in AuthService
+    @Mapping(target = "enabled", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "memberships", ignore = true)
+    @Mapping(target = "createdEvents", ignore = true)
+    @Mapping(target = "createdActivities", ignore = true)
+    @Mapping(target = "comments", ignore = true)
     User toEntity(RegisterRequest request);
 }
 

@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(ClubController.class)
 @AutoConfigureMockMvc // enable Spring Security filters
-@Import(io.droidevs.mclub.security.SecurityConfig.class)
+@Import({io.droidevs.mclub.security.SecurityConfig.class, TestControllerAdviceMocks.class})
 class ClubControllerTest {
 
     @Autowired

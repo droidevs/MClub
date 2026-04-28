@@ -3,9 +3,13 @@ package io.droidevs.mclub.controller;
 import io.droidevs.mclub.domain.CommentTargetType;
 import io.droidevs.mclub.dto.CommentCreateRequest;
 import io.droidevs.mclub.dto.CommentDto;
+import io.droidevs.mclub.dto.CommentPreviewDto;
 import io.droidevs.mclub.service.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -21,20 +25,35 @@ public class CommentController {
 
     private final CommentService commentService;
 
-    @GetMapping("/{targetType}/{targetId}")
-    public ResponseEntity<List<CommentDto>> getComments(@PathVariable String targetType,
-                                                       @PathVariable UUID targetId,
-                                                       Authentication auth) {
+    @GetMapping("/{targetType}/{targetId}/preview")
+    public ResponseEntity<CommentPreviewDto> getPreview(
+            @PathVariable String targetType,
+            @PathVariable UUID targetId,
+            Authentication auth
+    ) {
         CommentTargetType type = CommentTargetType.valueOf(targetType.toUpperCase());
         String email = auth != null ? auth.getName() : null;
-        return ResponseEntity.ok(commentService.getThread(type, targetId, email));
+
+        return ResponseEntity.ok(
+                commentService.getPreview(type, targetId, email)
+        );
+    }
+
+    @GetMapping("/{targetType}/{targetId}")
+    public ResponseEntity<Page<CommentDto>> getComments(@PathVariable String targetType,
+                                                        @PathVariable UUID targetId,
+                                                        @PageableDefault Pageable pageable,
+                                                        Authentication auth) {
+        CommentTargetType type = CommentTargetType.valueOf(targetType.toUpperCase());
+        String email = auth != null ? auth.getName() : null;
+        return ResponseEntity.ok(commentService.getThread(type, targetId, pageable, email));
     }
 
     /** Fetch all direct replies for a comment (children only). */
     @GetMapping("/{commentId}/replies")
-    public ResponseEntity<List<CommentDto>> getReplies(@PathVariable UUID commentId, Authentication auth) {
+    public ResponseEntity<Page<CommentDto>> getReplies(@PathVariable UUID commentId,@PageableDefault Pageable pageable, Authentication auth) {
         String email = auth != null ? auth.getName() : null;
-        return ResponseEntity.ok(commentService.getDirectReplies(commentId, email));
+        return ResponseEntity.ok(commentService.getDirectReplies(commentId,pageable, email));
     }
 
     @PostMapping("/{targetType}/{targetId}")

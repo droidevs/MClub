@@ -8,26 +8,52 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "memberships")
-@Data @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(
+        name = "memberships",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_membership_user_club",
+                        columnNames = {"user_id", "club_id"}
+                )
+        },
+        indexes = {
+                @Index(name = "idx_membership_user", columnList = "user_id"),
+                @Index(name = "idx_membership_club", columnList = "club_id"),
+                @Index(name = "idx_membership_status", columnList = "status")
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Membership {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
+
+    @EqualsAndHashCode.Include
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @ToString.Exclude
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "club_id")
+    @ToString.Exclude
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "club_id", nullable = false)
     private Club club;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ClubRole role;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private MembershipStatus status;
 
     @CreationTimestamp
+    @Column(updatable = false)
     private LocalDateTime joinedAt;
 }

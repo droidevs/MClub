@@ -1,70 +1,257 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head}"></head>
+
 <body th:replace="~{layout :: body(content=~{this :: content})}" class="bg-light">
 
 <div class="container mt-4" th:fragment="content">
 
+    <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2><i class="bi bi-people-fill text-primary"></i> <span th:text="${club.name}"></span> Members</h2>
-            <div class="text-muted small">Approved members only. Use “Applications” to approve or reject new join requests.</div>
-        </div>
-        <div class="d-flex gap-2">
-            <a th:href="@{/club-admin/clubs/{clubId}/memberships(clubId=${club.id})}" class="btn btn-outline-primary btn-sm">
-                <i class="bi bi-inbox"></i> Applications
-            </a>
-            <a th:href="@{/club-admin/clubs}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to Managed Clubs</a>
-        </div>
-    </div>
-
-    <div th:if="${message}" class="alert alert-success mt-2" th:text="${message}"></div>
-    <div th:if="${error}" class="alert alert-danger mt-2" th:text="${error}"></div>
-
-    <div class="card shadow-sm border-0 mt-4 rounded-4">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover table-striped mb-0 align-middle">
-                    <thead class="table-light text-secondary">
-                        <tr>
-                            <th class="ps-4">User</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Date Joined</th>
-                            <th class="pe-4 text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="member : ${members}">
-                            <td class="ps-4 fw-bold text-dark" th:text="${member.user.fullName}"></td>
-                            <td><span class="badge bg-secondary rounded-pill" th:text="${member.role}"></span></td>
-                            <td>
-                                <span class="badge bg-success" th:text="${member.status}"></span>
-                            </td>
-                            <td class="text-muted" th:text="${#temporals.format(member.joinedAt, 'dd MMM yyyy HH:mm')}"></td>
-                            <td class="pe-4 text-end">
-                                <!-- Kick only (manage-members only lists APPROVED memberships) -->
-                                <div class="d-flex gap-2 justify-content-end" th:if="${member.role.name() != 'ADMIN'}">
-                                    <form th:action="@{/club-admin/memberships/{id}/kick(id=${member.id})}" method="post">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to kick this member?');"><i class="bi bi-x-octagon"></i> Kick Out</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div th:if="${#lists.isEmpty(members)}" class="text-center p-5 text-muted">
-                    <h5><i class="bi bi-emoji-neutral text-secondary" style="font-size: 2rem;"></i></h5>
-                    <p>No approved members yet.</p>
-                    <a th:href="@{/club-admin/clubs/{clubId}/memberships(clubId=${club.id})}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-inbox"></i> View Applications
-                    </a>
-                </div>
+            <h2 class="fw-bold">
+                <i class="bi bi-people-fill text-primary"></i>
+                <span th:text="${club.name}"></span> Members
+            </h2>
+            <div class="text-muted small">
+                Manage approved members of this club
             </div>
         </div>
+
+        <div class="d-flex gap-2">
+            <a th:href="@{/club-admin/clubs/{clubId}/memberships(clubId=${club.id})}"
+               class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-inbox"></i> Applications
+            </a>
+
+            <a th:href="@{/club-admin/clubs}"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
     </div>
+
+    <!-- ALERTS -->
+    <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- SEARCH -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3">
+        <div class="card-body">
+
+            <form method="get">
+                <div class="row g-2">
+
+                    <div class="col-md-8">
+                        <input type="text"
+                               name="q"
+                               class="form-control"
+                               placeholder="Search members..."
+                               th:value="${query}"
+                               oninput="debouncedSubmit(this.form)">
+                    </div>
+
+                    <div class="col-md-4 d-flex gap-2">
+                        <button class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i>
+                        </button>
+
+                        <a th:href="@{/club-admin/clubs/{clubId}/manage-members(clubId=${club.id})}"
+                           class="btn btn-outline-secondary w-100">
+                            Reset
+                        </a>
+                    </div>
+
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card shadow-sm border-0 rounded-4">
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+                <tr>
+                    <th class="ps-4">User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+                </thead>
+
+                <tbody>
+
+                <tr th:each="member : ${membersPage.content}">
+
+                    <td class="ps-4">
+                        <div class="fw-semibold"
+                             th:text="${member.user.fullName}"></div>
+                    </td>
+
+                    <td>
+                        <span class="badge bg-secondary"
+                              th:text="${member.role}"></span>
+                    </td>
+
+                    <td>
+                        <span class="badge bg-success"
+                              th:text="${member.status}"></span>
+                    </td>
+
+                    <td class="text-muted small"
+                        th:text="${#temporals.format(member.joinedAt, 'dd MMM yyyy')}">
+                    </td>
+
+                    <td class="text-end pe-4">
+
+                        <button th:if="${member.role.name() != 'ADMIN'}"
+                                class="btn btn-sm btn-outline-danger"
+                                th:attr="data-id=${member.id}"
+                                onclick="kickMember(this)">
+                            <i class="bi bi-x"></i>
+                        </button>
+
+                    </td>
+
+                </tr>
+
+                </tbody>
+            </table>
+
+            <!-- EMPTY STATE -->
+            <div th:if="${membersPage.totalElements == 0}"
+                 class="text-center py-5 text-muted">
+
+                <i class="bi bi-people fs-1 d-block mb-2"></i>
+
+                <div th:if="${query}">
+                    No members match "<span th:text="${query}"></span>"
+                </div>
+                <div th:if="${query == null}">
+                    No members yet
+                </div>
+                <a th:href="@{/club-admin/clubs/{clubId}/memberships(clubId=${club.id})}"
+                   class="btn btn-outline-primary btn-sm mt-2">
+                    View Applications
+                </a>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="d-flex justify-content-between align-items-center mt-3"
+         th:if="${membersPage.totalPages > 1}">
+
+        <div class="text-muted small">
+            Page <b th:text="${membersPage.number + 1}"></b>
+            of <b th:text="${membersPage.totalPages}"></b>
+        </div>
+
+        <ul class="pagination pagination-sm mb-0">
+
+            <!-- PREV -->
+            <li class="page-item"
+                th:classappend="${membersPage.first} ? 'disabled'">
+
+                <a class="page-link"
+                   th:href="@{/club-admin/clubs/{clubId}/manage-members(
+                       clubId=${club.id},
+                       page=${membersPage.number - 1},
+                       size=${membersPage.size},
+                       q=${query}
+                   )}">
+                    ←
+                </a>
+            </li>
+
+            <!-- WINDOWED PAGES -->
+            <li class="page-item"
+                th:each="i : ${#numbers.sequence(
+                    T(java.lang.Math).max(0, membersPage.number - 2),
+                    T(java.lang.Math).min(membersPage.totalPages - 1, membersPage.number + 2)
+                )}"
+                th:classappend="${i == membersPage.number} ? 'active'">
+
+                <a class="page-link"
+                   th:text="${i + 1}"
+                   th:href="@{/club-admin/clubs/{clubId}/manage-members(
+                       clubId=${club.id},
+                       page=${i},
+                       size=${membersPage.size},
+                       q=${query}
+                   )}">
+                </a>
+            </li>
+
+            <!-- NEXT -->
+            <li class="page-item"
+                th:classappend="${membersPage.last} ? 'disabled'">
+
+                <a class="page-link"
+                   th:href="@{/club-admin/clubs/{clubId}/manage-members(
+                       clubId=${club.id},
+                       page=${membersPage.number + 1},
+                       size=${membersPage.size},
+                       q=${query}
+                   )}">
+                    →
+                </a>
+            </li>
+
+        </ul>
+
+    </div>
+
 </div>
 
+<script>
+    let timeout;
+    function debouncedSubmit(form) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => form.submit(), 400);
+    }
 
+    async function kickMember(button) {
+        const membershipId = button.getAttribute("data-id");
+
+        if (!confirm("Kick this member?")) return;
+
+        try {
+            button.disabled = true;
+            button.innerHTML = "Processing...";
+
+            const response = await fetch(`/api/memberships/${membershipId}/kick`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (response.status === 403) {
+                alert("You are not allowed to perform this action");
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error("Failed to kick member");
+            }
+
+            // SUCCESS → reload or redirect
+            button.closest("tr").remove();
+
+        } catch (e) {
+            alert("Error: " + e.message);
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-x"></i>';
+        }
+    }
+</script>
 </body>
 </html>

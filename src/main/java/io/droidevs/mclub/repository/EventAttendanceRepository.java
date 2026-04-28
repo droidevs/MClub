@@ -1,6 +1,9 @@
 package io.droidevs.mclub.repository;
 
 import io.droidevs.mclub.domain.EventAttendance;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,10 +13,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface EventAttendanceRepository extends JpaRepository<EventAttendance, UUID> {
+
     Optional<EventAttendance> findByEventIdAndUserId(UUID eventId, UUID userId);
 
-    @Query("select a from EventAttendance a join fetch a.user u join fetch a.event e where e.id = :eventId")
-    List<EventAttendance> findByEventIdWithUserAndEvent(@Param("eventId") UUID eventId);
+    @EntityGraph(attributePaths = {"user", "event"})
+    @Query("""
+        select a 
+        from EventAttendance a 
+        where a.event.id = :eventId
+     """)
+    Page<EventAttendance> findByEventId(@Param("eventId") UUID eventId, Pageable pageable);
 
     long countByEventId(UUID eventId);
+
 }
