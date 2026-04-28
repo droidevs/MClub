@@ -2,7 +2,7 @@
 
 This document explains the **MClub** Spring Boot application: its architecture, major features, request flows, security model, and database schema.
 
-> Source of truth: the code in `src/main/java/io/droidevs/mclub`, Thymeleaf templates in `src/main/resources/templates`, and Flyway migration `src/main/resources/db/migration/V1__schema.sql`.
+> Source of truth: the code in `src/main/java/io/droidevs/mclub`, Thymeleaf templates in `src/main/resources/templates`, and Flyway migration `src/main/resources/db/migration/V1__create_user_table.sql`.
 
 ## 1) What MClub is
 
@@ -13,7 +13,7 @@ MClub is a club management system with:
 - **Events** (created by clubs; students can register)
 - **Attendance / check-in** (QR-token window configured by organizers; students check in)
 - **Event ratings** (students rate events; last rating per student per event is stored)
-- **Comments** (threaded comments for **events** and **activities**, including likes and replies)
+- **Comments** (threaded comments for **events** and **activities**, including likes and repliesPreview)
 - **Club applications** (students apply to create a club; platform admin reviews)
 
 The app has both:
@@ -28,7 +28,7 @@ The app has both:
 - Thymeleaf templates
 - Spring Security with JWT authentication
 - PostgreSQL database
-- Flyway migrations (`V1__schema.sql`) with JPA set to `ddl-auto: validate`
+- Flyway migrations (`V1__create_user_table.sql`) with JPA set to `ddl-auto: validate`
 
 Key config:
 
@@ -104,7 +104,7 @@ From `SecurityConfig`:
 
 ## 5) Database schema (Flyway V1)
 
-Schema source: `src/main/resources/db/migration/V1__schema.sql`.
+Schema source: `src/main/resources/db/migration/V1__create_user_table.sql`.
 
 ### 5.1 Tables
 
@@ -300,7 +300,7 @@ The system supports:
 API controller:
 
 - `GET /api/comments/{targetType}/{targetId}` → thread
-- `GET /api/comments/{commentId}/replies` → direct replies
+- `GET /api/comments/{commentId}/repliesPreview` → direct repliesPreview
 - `POST /api/comments/{targetType}/{targetId}` → create (root or reply if `parentId` set)
 - `POST /api/comments/{commentId}/reply` → create reply explicitly
 - `POST /api/comments/{commentId}/like` → toggle like
@@ -309,7 +309,7 @@ UI approach used in the project:
 
 - Event detail shows only a small preview (e.g., top 3 comments).
 - “See all comments” links to a dedicated comments page.
-- On the comments page, each comment shows only the first reply with a “see more replies” expandable section.
+- On the comments page, each comment shows only the first reply with a “see more repliesPreview” expandable section.
 
 ## 7) Important design notes (based on past issues)
 
@@ -331,8 +331,8 @@ Mitigation patterns used/expected:
 - `comments.parent_id` forms a tree.
 - “Thread” endpoints normally return:
   - root comments (parent is null)
-  - their immediate/preview replies
-  - counts or indicators to fetch more replies
+  - their immediate/preview repliesPreview
+  - counts or indicators to fetch more repliesPreview
 
 ### 7.3 Attendance token security
 
@@ -351,7 +351,7 @@ Mitigation patterns used/expected:
 - `src/main/java/io/droidevs/mclub/security/CustomUserDetailsService.java`
 
 ### Migration / schema
-- `src/main/resources/db/migration/V1__schema.sql`
+- `src/main/resources/db/migration/V1__create_user_table.sql`
 
 ### Controllers (examples)
 - Web (Thymeleaf):
